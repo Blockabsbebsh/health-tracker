@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Health Tracker</title>
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10); --wash:rgba(11,11,11,.05);
+  --accent:#2a78d6; --accent-ink:#fff; --band:rgba(11,11,11,.07);
+  --warn-bg:#fdf0d2; --warn-ink:#6b4700; --ok-bg:#e3f3e3; --ok-ink:#006300; --danger:#d03b3b;
+}
+@media (prefers-color-scheme:dark){:root{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10); --wash:rgba(255,255,255,.06);
+  --accent:#3987e5; --band:rgba(255,255,255,.08);
+  --warn-bg:#3b2c08; --warn-ink:#fab219; --ok-bg:#12301a; --ok-ink:#0ca30c; --danger:#e66767;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+#app{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:24px;margin:4px 0 2px}
+h2{font-size:15px;margin:22px 0 8px;color:var(--ink2);font-weight:600}
+.sub{color:var(--ink2);font-size:14px;margin:0 0 14px}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.top h1{flex:1;margin:0}
+.back{background:none;border:0;color:var(--accent);font:inherit;padding:8px 8px 8px 0;cursor:pointer}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+.btn{font:inherit;font-weight:600;font-size:15px;border:1px solid var(--border);background:var(--surface);color:var(--ink);
+  border-radius:10px;padding:10px 14px;min-height:44px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger)}
+.btn.block{display:block;width:100%}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.tile .l{font-size:13px;color:var(--ink2)}
+.tile .v{font-size:24px;font-weight:600;line-height:1.2;margin:2px 0}
+.tile .v small{font-size:14px;font-weight:500;color:var(--ink2)}
+.tile .d{font-size:13px;color:var(--ink2)}
+.list{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--border);
+  background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;min-height:52px}
+.row:first-child{border-top:0}
+.row .m{flex:1;min-width:0}
+.row .t{display:block;font-weight:600;overflow-wrap:anywhere}
+.row .s{display:block;font-size:13px;color:var(--ink2);overflow-wrap:anywhere}
+.row .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.row .r b{font-size:17px}
+.row .r span{font-size:13px;color:var(--ink2)}
+.chev{color:var(--muted)}
+.chip{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 8px;background:var(--wash);color:var(--ink2);white-space:nowrap}
+.chip.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.check{width:26px;height:26px;border-radius:50%;border:2px solid var(--axis);flex:none;display:grid;place-items:center;color:transparent;font-size:15px;font-weight:700}
+.row.on .check{background:var(--accent);border-color:var(--accent);color:#fff}
+.empty{color:var(--ink2);font-size:14px;text-align:center;padding:22px 14px}
+.note{font-size:13px;color:var(--ink2);margin:6px 2px 0}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.seg button{font:inherit;font-size:14px;border:1px solid var(--border);background:var(--surface);color:var(--ink2);border-radius:999px;padding:7px 13px;cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--page);border-color:var(--ink)}
+/* charts */
+.chart{position:relative;touch-action:pan-y}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.chart .end{fill:var(--ink);font-weight:600;font-size:12px}
+.chart .cross{stroke:var(--axis);stroke-width:1;visibility:hidden}
+.tip{position:absolute;transform:translate(-50%,calc(-100% - 12px));background:var(--ink);color:var(--page);font-size:12px;
+  padding:5px 8px;border-radius:8px;white-space:nowrap;pointer-events:none;visibility:hidden;text-align:center}
+.spark{width:56px;height:24px;flex:none}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--border);vertical-align:top}
+th{font-size:12px;color:var(--ink2);font-weight:600;border-top:0}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+td small{color:var(--ink2);font-size:12px}
+.card:has(table){overflow-x:auto}
+/* nav */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);
+  display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav a{flex:1;max-width:112px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;
+  font-size:11px;color:var(--muted);text-decoration:none}
+nav a.on{color:var(--accent)}
+nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* dialog */
+dialog{border:0;border-radius:16px;padding:0;width:min(520px,calc(100vw - 20px));max-height:calc(100dvh - 24px);
+  background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog form{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+dialog header{display:flex;align-items:center;padding:14px 16px 6px}
+dialog header h2{flex:1;margin:0;font-size:18px;color:var(--ink)}
+.x{background:none;border:0;font-size:18px;color:var(--ink2);padding:8px;cursor:pointer}
+.fbody{padding:6px 16px 10px;overflow:auto}
+dialog footer{display:flex;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--border)}
+.sp{flex:1}
+.f{display:block;margin-bottom:10px}
+.f>span{display:block;font-size:13px;color:var(--ink2);margin-bottom:3px}
+input,select,textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--axis);border-radius:10px;background:var(--page);color:var(--ink);min-height:44px}
+textarea{min-height:76px;resize:vertical}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.labrow{border:1px solid var(--border);border-radius:12px;padding:8px;margin-bottom:8px}
+.lr1{display:flex;gap:4px;margin-bottom:6px}
+.lr1 select{flex:1;min-width:0;font-weight:600}
+.lr2{display:grid;grid-template-columns:1fr 1.3fr .95fr .95fr;gap:6px}
+.lr2 input,.lr2 select{padding:8px 6px;font-size:14px;min-width:0}
+.labrow .rm{background:none;border:0;color:var(--ink2);font-size:16px;width:40px;flex:none;cursor:pointer}
+.err{color:var(--danger);font-size:14px;margin:0;padding:0 16px 8px}
+@media print{
+  nav,.noprint{display:none!important}
+  body{background:#fff;color:#000;padding:0}
+  .card,.list{border-color:#ccc;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav">
+  <a href="#home" data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+  <a href="#labs" data-tab="labs"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9"/></svg>Labs</a>
+  <a href="#meds" data-tab="meds"><svg viewBox="0 0 24 24"><path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7zM7 10l7 7"/></svg>Meds</a>
+  <a href="#body" data-tab="body"><svg viewBox="0 0 24 24"><path d="M3 16l5-5 4 3 8-9M3 21h18"/></svg>Body</a>
+  <a href="#more" data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>More</a>
+</nav>
+<dialog id="dlg"></dialog>
+
+<script>
+'use strict';
+/* ---------- test catalog (English · Lithuanian name as printed on local reports) ---------- */
+const CATALOG=[
+ ['Androgens',[
+  ['t_total','Total testosterone','Testosteronas',['nmol/L','ng/dL','ng/mL']],
+  ['t_free','Free testosterone','Laisvas testosteronas',['pmol/L','pg/mL']],
+  ['shbg','SHBG','LHSG – lytinius hormonus surišantis globulinas',['nmol/L']],
+  ['dheas','DHEA-S','Dehidroepiandrosterono sulfatas',['µmol/L','µg/dL']],
+  ['androst','Androstenedione','Androstendionas',['nmol/L','ng/mL']],
+  ['ohp17','17-OH progesterone','17-OH progesteronas',['nmol/L','ng/mL']]]],
+ ['Reproductive hormones',[
+  ['lh','LH','Liuteinizuojantis hormonas',['IU/L']],
+  ['fsh','FSH','Folikulus stimuliuojantis hormonas',['IU/L']],
+  ['e2','Estradiol','Estradiolis',['pmol/L','pg/mL']],
+  ['prog','Progesterone','Progesteronas',['nmol/L','ng/mL']],
+  ['amh','AMH','Anti-Miulerio hormonas',['ng/mL','pmol/L']],
+  ['prl','Prolactin','Prolaktinas',['mIU/L','ng/mL']]]],
+ ['Thyroid',[
+  ['tsh','TSH','TTH – tirotropinis hormonas',['mIU/L']],
+  ['ft4','Free T4','Laisvas tiroksinas (FT4)',['pmol/L']]]],
+ ['Glucose and insulin',[
+  ['glu','Fasting glucose','Gliukozė (nevalgius)',['mmol/L']],
+  ['ins','Fasting insulin','Insulinas',['mU/L','pmol/L']],
+  ['hba1c','HbA1c','Glikuotas hemoglobinas',['%','mmol/mol']],
+  ['glu120','Glucose 2 h (OGTT)','GTM – gliukozė po 2 val.',['mmol/L']]]],
+ ['Lipids',[
+  ['chol','Total cholesterol','Bendras cholesterolis',['mmol/L']],
+  ['hdl','HDL cholesterol','DTL cholesterolis',['mmol/L']],
+  ['ldl','LDL cholesterol','MTL cholesterolis',['mmol/L']],
+  ['tg','Triglycerides','Trigliceridai',['mmol/L']]]],
+ ['Other',[
+  ['vitd','Vitamin D (25-OH)','Vitaminas D',['nmol/L','ng/mL']],
+  ['b12','Vitamin B12','Vitaminas B12',['pmol/L','pg/mL']],
+  ['ferr','Ferritin','Feritinas',['µg/L']],
+  ['alt','ALT','ALT – alanininė aminotransferazė',['U/L']],
+  ['crp','CRP','CRB – C reaktyvusis baltymas',['mg/L']],
+  ['cort','Cortisol','Kortizolis',['nmol/L']]]]
+];
+const CALC={
+ homa:{name:'HOMA-IR',unit:'',desc:'Fasting glucose (mmol/L) × fasting insulin (mU/L) ÷ 22.5, from results taken on the same day. An estimate of insulin resistance: higher means more resistance. Cut-offs vary between labs and populations, so read it with your doctor.'},
+ lhfsh:{name:'LH : FSH ratio',unit:'',desc:'LH ÷ FSH from results taken on the same day. Most meaningful on cycle days 2–5.'},
+ fai:{name:'Free androgen index',unit:'%',desc:'Total testosterone (nmol/L) ÷ SHBG (nmol/L) × 100, from results taken on the same day. An estimate of how much testosterone is biologically active.'}
+};
+const LABS=['Synlab','Antėja','Medicina practica','Rezus.lt','Poliklinika'];
+const NOTE_TYPES=['Doctor visit','Ultrasound','Symptom','Other'];
+const PANELS={
+ hormones:['Hormones',['t_total','shbg','dheas','lh','fsh','e2','prl','amh']],
+ metabolic:['Glucose and insulin',['glu','ins','hba1c']],
+ lipids:['Lipids',['chol','hdl','ldl','tg']],
+ other:['Thyroid and vitamins',['tsh','ft4','vitd','b12','ferr']]
+};
+/* names used to recognise tests in pasted report text; checked in this order, more specific first */
+const ALIASES=[
+ ['t_free',['laisvas testosteronas','laisvasis testosteronas','free testosterone']],
+ ['t_total',['testosteronas','testosterone']],
+ ['shbg',['lytinius hormonus surisantis globulinas','shbg','lhsg']],
+ ['dheas',['dehidroepiandrosterono sulfatas','dhea-so4','dhea-s','dheas','dhea']],
+ ['androst',['androstendionas','androstenedione']],
+ ['ohp17',['17-oh progesteronas','17-oh-progesteronas','17 oh progesteronas','17-hidroksiprogesteronas','17-oh progesterone','17-ohp']],
+ ['prog',['progesteronas','progesterone']],
+ ['lh',['liuteinizuojantis hormonas','lh']],
+ ['fsh',['folikulus stimuliuojantis hormonas','fsh']],
+ ['e2',['estradiolis','estradiol','e2']],
+ ['amh',['anti-miulerio hormonas','antimiulerio hormonas','anti-mullerian hormone','amh']],
+ ['prl',['prolaktinas','prolactin']],
+ ['tsh',['tirotropinis hormonas','tirotropinas','tth','tsh']],
+ ['ft4',['laisvas tiroksinas','laisvasis tiroksinas','free t4','ft4','lt4']],
+ ['glu120',['gliukoze po 2 val','po 2 val']],
+ ['glu',['gliukoze','gliukozes','glucose']],
+ ['ins',['insulinas','insulin']],
+ ['hba1c',['glikuotas hemoglobinas','glikozilintas hemoglobinas','hba1c']],
+ ['hdl',['dtl','hdl']],
+ ['ldl',['mtl','ldl']],
+ ['chol',['cholesterolis','cholesterol']],
+ ['tg',['trigliceridai','triglycerides']],
+ ['vitd',['vitaminas d','vitamino d','vitamin d','25-oh-d']],
+ ['b12',['b12']],
+ ['ferr',['feritinas','ferritin']],
+ ['alt',['alanininaminotransferaze','alat','alt','gpt']],
+ ['crp',['c reaktyvusis baltymas','c reaktyvus baltymas','crb','crp']],
+ ['cort',['kortizolis','cortisol']]
+];
+const UNIT_EQ={'µiu/ml':['mU/L','mIU/L'],'uiu/ml':['mU/L','mIU/L'],'miu/l':['mIU/L','mU/L'],'mu/l':['mU/L','mIU/L'],'miu/ml':['IU/L'],'iu/l':['IU/L'],'u/l':['IU/L','U/L'],
+ 'ng/ml':['ng/mL','µg/L'],'µg/l':['µg/L','ng/mL'],'ug/l':['µg/L','ng/mL'],'ug/dl':['µg/dL'],'umol/l':['µmol/L']};
+
+/* ---------- storage ---------- */
+const KEY='health-tracker-v1';
+const blank=()=>({version:1,settings:{heightCm:null,lastBackup:null},labs:[],customTests:[],meds:[],taken:{},body:[],periods:[],notes:[]});
+let db=load();
+function load(){try{const r=JSON.parse(localStorage.getItem(KEY));return r&&r.version?Object.assign(blank(),r):blank()}catch(e){return blank()}}
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: this browser is blocking storage.')}}
+function save(){saveLocal();queueFolderWrite()}
+const anyData=()=>!!(db.labs.length||db.meds.length||db.body.length||db.periods.length||db.notes.length);
+
+/* ---------- backup folder: a copy of everything in a folder the user picks (browsers with the File System Access API) ---------- */
+const FS_OK='showDirectoryPicker' in window,DATA_FILE='health-tracker-data.json';
+const CAN_SHARE=(()=>{try{return!!navigator.canShare&&navigator.canShare({files:[new File(['{}'],'b.txt',{type:'text/plain'})]})}catch(e){return false}})();
+// state: unsupported | none | prompt (permission must be re-granted) | ok | error
+const folder={handle:null,state:FS_OK?'none':'unsupported',saved:localStorage.getItem(KEY+'-folder-saved'),error:''};
+function idb(mode,fn){return new Promise((res,rej)=>{const o=indexedDB.open('health-tracker',1);
+  o.onupgradeneeded=()=>o.result.createObjectStore('kv');o.onerror=()=>rej(o.error);
+  o.onsuccess=()=>{const tx=o.result.transaction('kv',mode),r=fn(tx.objectStore('kv'));tx.oncomplete=()=>res(r.result);tx.onerror=()=>rej(tx.error)}})}
+async function readFolderFile(h){
+  try{const f=await(await h.getFileHandle(DATA_FILE)).getFile(),o=JSON.parse(await f.text());
+    return o&&o.version&&Array.isArray(o.labs)?{data:o,when:new Date(f.lastModified)}:null}catch(e){return null}
+}
+async function writeFile(h,name,text){const w=await(await h.getFileHandle(name,{create:true})).createWritable();await w.write(text);await w.close()}
+let folderTimer=0;
+function queueFolderWrite(){if(folder.state!=='ok'&&folder.state!=='error')return;clearTimeout(folderTimer);folderTimer=setTimeout(writeFolder,600)}
+async function writeFolder(){
+  if(!folder.handle||!anyData())return; // never overwrite a backup with an empty tracker
+  try{const text=JSON.stringify(db,null,1);
+    await writeFile(folder.handle,DATA_FILE,text);
+    await writeFile(folder.handle,'health-tracker-'+today().slice(0,7)+'.json',text);
+    folder.state='ok';folder.error='';folder.saved=new Date().toISOString();localStorage.setItem(KEY+'-folder-saved',folder.saved);
+  }catch(e){folder.state='error';folder.error=String(e.message||e)}
+  if(['home','settings'].includes(route()[0])&&!$('#dlg').open)render();
+}
+async function syncFolder(){ // the folder has just become writable
+  if(anyData()){await writeFolder();return}
+  const ex=await readFolderFile(folder.handle);if(ex){db=Object.assign(blank(),ex.data);saveLocal()}
+}
+async function setFolder(h){
+  const ex=await readFolderFile(h);
+  if(ex&&anyData()&&JSON.stringify(ex.data)!==JSON.stringify(db)&&
+    confirm('This folder already contains tracker data, saved '+ex.when.toLocaleDateString('en-GB')+'.\n\nOK: load the data from the folder onto this device (replaces what is here now).\nCancel: keep the data on this device and overwrite the folder.')){
+    db=Object.assign(blank(),ex.data);saveLocal();
+  }
+  folder.handle=h;folder.state='ok';folder.error='';
+  await idb('readwrite',st=>st.put(h,'dir'));
+  await syncFolder();render();
+}
+async function initFolder(){
+  if(!FS_OK)return;
+  try{const h=await idb('readonly',st=>st.get('dir'));if(!h)return;
+    folder.handle=h;
+    folder.state=(await h.queryPermission({mode:'readwrite'}))==='granted'?'ok':'prompt';
+    if(folder.state==='ok')await syncFolder();
+  }catch(e){}
+  render();
+}
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>iso(new Date());
+const toDate=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const days=(a,b)=>Math.round((toDate(b)-toDate(a))/864e5);
+const fmtDate=s=>s?toDate(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+const fmtShort=s=>toDate(s).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+const fmt=v=>v==null?'':String(+(+v).toPrecision(8));
+const r2=x=>+x.toFixed(2);
+const norm=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/μ/g,'µ');
+const num=s=>{s=String(s??'').trim().replace(',','.');if(s==='')return null;const n=Number(s);return isFinite(n)?n:NaN};
+const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
+function testMeta(id){
+  for(const[,ts]of CATALOG)for(const t of ts)if(t[0]===id)return{id,name:t[1],lt:t[2],units:t[3]};
+  const c=db.customTests.find(t=>t.id===id);
+  return c?{id,name:c.name,lt:'',units:c.units}:{id,name:id,lt:'',units:['']};
+}
+const entriesFor=id=>db.labs.filter(e=>e.test===id).sort(byDate);
+function flag(e){
+  if(e.refLow==null&&e.refHigh==null)return null;
+  if(e.refLow!=null&&e.value<e.refLow)return'low';
+  if(e.refHigh!=null&&e.value>e.refHigh)return'high';
+  return'ok';
+}
+const flagChip=f=>f==='low'?'<span class="chip warn">↓ Below range</span>':f==='high'?'<span class="chip warn">↑ Above range</span>':f==='ok'?'<span class="chip ok">✓ In range</span>':'';
+const refText=e=>e.refLow!=null&&e.refHigh!=null?fmt(e.refLow)+'–'+fmt(e.refHigh):e.refLow!=null?'> '+fmt(e.refLow):e.refHigh!=null?'< '+fmt(e.refHigh):'';
+function derived(){
+  const by={};db.labs.forEach(e=>{(by[e.date]=by[e.date]||{})[e.test]=e});
+  const out={homa:[],lhfsh:[],fai:[]};
+  Object.keys(by).sort().forEach(d=>{const r=by[d];
+    if(r.glu&&r.ins&&r.glu.unit==='mmol/L'&&r.ins.unit==='mU/L')out.homa.push({d,v:r2(r.glu.value*r.ins.value/22.5)});
+    if(r.lh&&r.fsh&&r.fsh.value>0)out.lhfsh.push({d,v:r2(r.lh.value/r.fsh.value)});
+    if(r.t_total&&r.shbg&&r.t_total.unit==='nmol/L'&&r.shbg.value>0)out.fai.push({d,v:r2(r.t_total.value/r.shbg.value*100)});
+  });
+  return out;
+}
+const periodStarts=()=>db.periods.map(p=>p.start).sort();
+function cycleDay(date){
+  const s=periodStarts().filter(x=>x<=date).pop();
+  if(!s)return null;const n=days(s,date)+1;return n<=120?n:null;
+}
+const medActive=(m,d)=>(!m.start||m.start<=d)&&(!m.end||m.end>=d);
+
+/* ---------- charts ---------- */
+function niceStep(r){const p=Math.pow(10,Math.floor(Math.log10(r)));const f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p}
+function chart(pts,o={}){
+  if(!pts.length)return'';
+  const W=340,H=190,m={l:38,r:46,t:14,b:24},unit=o.unit||'';
+  const xs=pts.map(p=>+toDate(p.d));
+  let x0=Math.min(...xs),x1=Math.max(...xs);
+  if(x0===x1){x0-=864e5*15;x1+=864e5*15}
+  const vals=pts.map(p=>p.v);if(o.lo!=null)vals.push(o.lo);if(o.hi!=null)vals.push(o.hi);
+  const lo=Math.min(...vals),hi=Math.max(...vals);
+  let y0=lo,y1=hi;if(y0===y1){y0-=1;y1+=1}
+  const g=(y1-y0)*.12;y0-=g;y1+=g;if(lo>=0&&y0<0)y0=0;
+  const step=niceStep((y1-y0)/4),dec=step<1?Math.ceil(-Math.log10(step)):0;
+  const X=t=>m.l+(t-x0)/(x1-x0)*(W-m.l-m.r),Y=v=>H-m.b-(v-y0)/(y1-y0)*(H-m.t-m.b);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.title||'Trend')}">`;
+  if(o.lo!=null||o.hi!=null){
+    const top=Y(o.hi!=null?o.hi:y1),bot=Y(o.lo!=null?o.lo:y0);
+    s+=`<rect x="${m.l}" y="${top}" width="${W-m.l-m.r}" height="${Math.max(0,bot-top)}" fill="var(--band)"/>`;
+  }
+  for(let v=Math.ceil(y0/step)*step;v<=y1+1e-9;v+=step)
+    s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${m.l-6}" y="${Y(v)+4}" text-anchor="end">${v.toFixed(dec)}</text>`;
+  const P=pts.map((p,i)=>({x:+X(xs[i]).toFixed(1),y:+Y(p.v).toFixed(1),t:fmtDate(p.d)+' · '+fmt(p.v)+(unit?' '+unit:'')}));
+  s+=`<line class="cross" y1="${m.t}" y2="${H-m.b}"/>`;
+  if(P.length>1)s+=`<polyline points="${P.map(p=>p.x+','+p.y).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  P.forEach((p,i)=>{if(P.length<=24||i===P.length-1)s+=`<circle cx="${p.x}" cy="${p.y}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`});
+  const L=P[P.length-1];
+  s+=`<text class="end" x="${L.x+8}" y="${L.y+4}">${fmt(pts[pts.length-1].v)}</text>`;
+  if(pts.length>1&&pts[0].d!==pts[pts.length-1].d)
+    s+=`<text x="${m.l}" y="${H-6}">${fmtShort(pts[0].d)}</text><text x="${W-m.r}" y="${H-6}" text-anchor="end">${fmtShort(pts[pts.length-1].d)}</text>`;
+  else s+=`<text x="${L.x}" y="${H-6}" text-anchor="middle">${fmtShort(pts[0].d)}</text>`;
+  s+='</svg>';
+  return`<div class="chart" data-w="${W}" data-h="${H}" data-pts='${esc(JSON.stringify(P))}'>${s}<div class="tip"></div></div>`;
+}
+function spark(pts){
+  if(pts.length<2)return'<span class="spark"></span>';
+  const W=56,H=24,vs=pts.map(p=>p.v),lo=Math.min(...vs),hi=Math.max(...vs),r=hi-lo||1;
+  const xy=pts.map((p,i)=>[(3+i/(pts.length-1)*(W-8)).toFixed(1),(H-4-(p.v-lo)/r*(H-8)).toFixed(1)]);
+  const l=xy[xy.length-1];
+  return`<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${xy.map(a=>a.join(',')).join(' ')}" fill="none" stroke="var(--axis)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="${l[0]}" cy="${l[1]}" r="2.5" fill="var(--accent)"/></svg>`;
+}
+function chartHover(e){
+  const c=e.target.closest&&e.target.closest('.chart');if(!c)return;
+  const svg=c.querySelector('svg'),r=svg.getBoundingClientRect(),W=+c.dataset.w,H=+c.dataset.h;
+  const P=JSON.parse(c.dataset.pts),sx=(e.clientX-r.left)/r.width*W;
+  let b=P[0];P.forEach(p=>{if(Math.abs(p.x-sx)<Math.abs(b.x-sx))b=p});
+  const tip=c.querySelector('.tip'),cr=c.querySelector('.cross');
+  tip.textContent=b.t;tip.style.left=Math.min(78,Math.max(22,b.x/W*100))+'%';tip.style.top=(b.y/H*100)+'%';tip.style.visibility='visible';
+  cr.setAttribute('x1',b.x);cr.setAttribute('x2',b.x);cr.style.visibility='visible';
+}
+function chartLeave(e){
+  const c=e.target.closest&&e.target.closest('.chart');if(!c)return;
+  c.querySelector('.tip').style.visibility='hidden';c.querySelector('.cross').style.visibility='hidden';
+}
+document.addEventListener('pointermove',chartHover);
+document.addEventListener('pointerdown',chartHover);
+document.addEventListener('pointerout',e=>{if(e.pointerType==='mouse')chartLeave(e)});
+
+/* ---------- dialog / forms ---------- */
+const field=(label,html)=>`<label class="f"><span>${label}</span>${html}</label>`;
+const inp=(name,val,attrs='')=>`<input name="${name}" value="${esc(val??'')}" ${attrs}>`;
+const dec=(name,val,ph='')=>inp(name,val==null?'':fmt(val),`inputmode="decimal" autocomplete="off" placeholder="${ph}"`);
+function openForm({title,body,onSave,onDelete}){
+  const d=$('#dlg');
+  d.innerHTML=`<form novalidate><header><h2>${title}</h2><button type="button" class="x" data-act="close" aria-label="Close">✕</button></header>
+    <div class="fbody">${body}</div><p class="err" hidden></p>
+    <footer>${onDelete?'<button type="button" class="btn danger" data-act="del">Delete</button>':''}<span class="sp"></span>
+    <button type="button" class="btn" data-act="close">Cancel</button><button class="btn primary">Save</button></footer></form>`;
+  const f=d.querySelector('form');
+  f.onsubmit=e=>{e.preventDefault();const err=onSave(f);
+    if(err){const p=f.querySelector('.err');p.textContent=err;p.hidden=false}else{d.close();save();render()}};
+  d._del=onDelete;d.showModal();
+}
+const vals=f=>Object.fromEntries(new FormData(f));
+
+/* lab results form */
+function testOptions(sel){
+  let h='<option value="">Choose test…</option>';
+  for(const[g,ts]of CATALOG)h+=`<optgroup label="${g}">`+ts.map(t=>`<option value="${t[0]}"${t[0]===sel?' selected':''}>${t[1]} · ${t[2]}</option>`).join('')+'</optgroup>';
+  if(db.customTests.length)h+='<optgroup label="My tests">'+db.customTests.map(t=>`<option value="${t.id}"${t.id===sel?' selected':''}>${esc(t.name)}</option>`).join('')+'</optgroup>';
+  return h+'<option value="__custom">+ Add a test that is not listed…</option>';
+}
+function unitOptions(id,sel){
+  const us=(id?testMeta(id).units:['']).slice();if(sel&&!us.includes(sel))us.push(sel);
+  return us.map(u=>`<option${u===sel?' selected':''}>${esc(u)}</option>`).join('');
+}
+function labRow(e,single){
+  e=e||{};
+  return`<div class="labrow"><div class="lr1"><select name="test" aria-label="Test">${testOptions(e.test)}</select>${single?'':'<button type="button" class="rm" data-act="rmrow" aria-label="Remove this test">✕</button>'}</div>
+    <div class="lr2">${dec('value',e.value,'Result')}<select name="unit" aria-label="Unit">${unitOptions(e.test,e.unit)}</select>${dec('lo',e.refLow,'Ref min')}${dec('hi',e.refHigh,'Ref max')}</div></div>`;
+}
+function onTestChange(sel){
+  const row=sel.closest('.labrow');
+  if(sel.value==='__custom'){
+    const name=(prompt('Test name')||'').trim();
+    if(!name){sel.value='';return}
+    const unit=(prompt('Unit, e.g. nmol/L')||'').trim();
+    const ct={id:'c_'+uid(),name,units:[unit]};db.customTests.push(ct);save();
+    document.querySelectorAll('#dlg select[name=test]').forEach(s=>{const v=s===sel?ct.id:s.value;s.innerHTML=testOptions(v)});
+  }
+  const id=sel.value,last=entriesFor(id).pop();
+  row.querySelector('[name=unit]').innerHTML=unitOptions(id,last&&last.unit);
+  if(last){const lo=row.querySelector('[name=lo]'),hi=row.querySelector('[name=hi]');
+    if(!lo.value&&!hi.value){lo.value=fmt(last.refLow);hi.value=fmt(last.refHigh)}}
+}
+/* add rows for a list of tests; unit and reference range default to what was used last time */
+function addRows(items){
+  const rows=$('#rows'),all=()=>[...rows.querySelectorAll('.labrow')];let added=0;
+  all().forEach(r=>{if(!r.querySelector('[name=test]').value&&!r.querySelector('[name=value]').value)r.remove()});
+  for(const it of items){
+    const ex=all().find(r=>r.querySelector('[name=test]').value===it.test);
+    if(ex){const v=ex.querySelector('[name=value]');if(it.value!=null&&!v.value)v.value=fmt(it.value);continue}
+    const last=entriesFor(it.test).pop()||{};
+    rows.insertAdjacentHTML('beforeend',labRow({test:it.test,value:it.value,unit:it.unit||last.unit,
+      refLow:it.refLow!==undefined?it.refLow:last.refLow,refHigh:it.refHigh!==undefined?it.refHigh:last.refHigh}));
+    added++;
+  }
+  if(!rows.children.length)rows.insertAdjacentHTML('beforeend',labRow());
+  return added;
+}
+function fillMsg(t){const p=$('#fillmsg');p.textContent=t;p.hidden=false}
+/* best-effort reader for text copied out of a lab report: one result per line, "name value unit range" */
+const NUM='\\d+(?:[.,]\\d+)?',RANGE=NUM+'\\s*[-–—]\\s*'+NUM;
+function findAlias(n){
+  for(const[id,al]of ALIASES)for(const a of al){
+    const m=n.match(new RegExp('(^|[^a-z0-9])'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^a-z0-9])'));
+    if(m)return{id,end:m.index+m[0].length};
+  }
+  return null;
+}
+function normUnit(id,raw){
+  if(!raw)return null;
+  const us=testMeta(id).units;
+  if(!/[\/%]/.test(raw)&&!us.some(u=>u.toLowerCase()===raw))return null; // "h", "l" and the like are flags, not units
+  return us.find(u=>u.toLowerCase()===raw)||(UNIT_EQ[raw]||[]).find(u=>us.includes(u))||raw.replace(/l$/,'L');
+}
+function parseReport(text){
+  const lines=text.split(/\r?\n/).map(l=>norm(l).trim()).filter(Boolean),items=[],seen={};
+  const clean=t=>t.replace(/\b(?:19|20)\d\d[-./]\d\d[-./]\d\d\b/g,' ')
+    .replace(/\(([^)]*)\)/g,(m,x)=>/[a-z]/.test(x)&&!new RegExp(RANGE).test(x)?' ':' '+x+' ');
+  let date=null;
+  for(const l of lines)if(/paem|paimt|eminio|meginio|tyrimo data|collect|sampl/.test(l)){const m=l.match(/\b(20\d\d)[-./](\d\d)[-./](\d\d)\b/);if(m){date=m[1]+'-'+m[2]+'-'+m[3];break}}
+  for(let i=0;i<lines.length;i++){
+    const hit=findAlias(lines[i]);if(!hit||seen[hit.id])continue;
+    let rest=clean(lines[i].slice(hit.end));
+    if(!new RegExp(NUM).test(rest)&&lines[i+1]&&!findAlias(lines[i+1]))rest=clean(lines[i+1]);
+    let lo,hi;
+    const lead=rest.match(new RegExp('^[^\\d]*('+RANGE+')'));
+    if(lead&&new RegExp(NUM).test(rest.slice(lead[0].length))){ // range printed before the result
+      const r=lead[1].split(/\s*[-–—]\s*/);lo=num(r[0]);hi=num(r[1]);rest=rest.slice(lead[0].length);
+    }
+    const v=rest.match(new RegExp('('+NUM+')\\s*([a-zµ%][a-zµ%/0-9]*)?'));if(!v)continue;
+    const after=rest.slice(v.index+v[0].length);
+    if(lo===undefined){
+      const r=after.match(new RegExp('('+NUM+')\\s*[-–—]\\s*('+NUM+')')),lt=after.match(new RegExp('[<≤]\\s*=?\\s*('+NUM+')')),gt=after.match(new RegExp('[>≥]\\s*=?\\s*('+NUM+')'));
+      if(r){lo=num(r[1]);hi=num(r[2])}else if(lt){lo=null;hi=num(lt[1])}else if(gt){lo=num(gt[1]);hi=null}
+    }
+    const it={test:hit.id,value:num(v[1]),unit:normUnit(hit.id,v[2])};
+    if(lo!==undefined){it.refLow=lo;it.refHigh=hi}
+    seen[hit.id]=1;items.push(it);
+  }
+  return{date,items};
+}
+function labForm(entry){
+  const single=!!entry,e=entry||{},last=db.labs.length?db.labs.map(x=>x.date).sort().pop():null;
+  const quick=single?'':`<div class="seg">${last?`<button type="button" data-act="fill" data-id="last">Same tests as ${fmtDate(last)}</button>`:''}`+
+    Object.keys(PANELS).map(k=>`<button type="button" data-act="fill" data-id="${k}">${PANELS[k][0]}</button>`).join('')+
+    `<button type="button" data-act="showpaste">Paste from report</button></div>
+    <div id="paste" hidden><textarea id="pastetext" rows="5" placeholder="Paste the text copied from your report here"></textarea>
+    <button type="button" class="btn block" data-act="readpaste" style="margin:6px 0 10px">Read results from text</button></div>
+    <p class="note" id="fillmsg" hidden style="margin:0 0 10px"></p>`;
+  openForm({title:single?'Edit result':'Add lab results',
+    body:`<div class="g2">${field('Date of blood test',inp('date',e.date||today(),'type="date"'))}
+      ${field('Laboratory',inp('lab',e.lab||(db.labs.length?db.labs[db.labs.length-1].lab:''),'list="labsdl" placeholder="optional"'))}</div>
+      <datalist id="labsdl">${LABS.map(l=>`<option value="${l}">`).join('')}</datalist>${quick}
+      <div id="rows">${labRow(entry,single)}</div>
+      ${single?'':'<button type="button" class="btn block" data-act="addrow">+ Another test</button>'}
+      <p class="note">${single?'':'Tap a group above to list its tests, then type only the results you have: empty rows are ignored, and units and reference ranges are remembered from last time. '}Check the range against each new report. Commas and dots both work.</p>`,
+    onSave:f=>{
+      const date=f.elements.date.value,lab=f.elements.lab.value.trim();
+      if(!date)return'Pick the date of the test.';
+      const out=[];
+      for(const r of f.querySelectorAll('.labrow')){
+        const q=n=>r.querySelector(`[name=${n}]`).value;
+        const test=q('test'),value=num(q('value')),lo=num(q('lo')),hi=num(q('hi'));
+        if(value==null)continue;
+        if(!test)return'Choose which test each result belongs to.';
+        if(isNaN(value))return'Enter a number for '+testMeta(test).name+'.';
+        if(isNaN(lo)||isNaN(hi))return'Reference values for '+testMeta(test).name+' must be numbers.';
+        out.push({id:uid(),date,lab,test,value,unit:q('unit'),refLow:lo,refHigh:hi});
+      }
+      if(!out.length)return'Enter at least one result.';
+      if(single)Object.assign(entry,out[0],{id:entry.id});else db.labs.push(...out);
+    },
+    onDelete:single?()=>{db.labs=db.labs.filter(x=>x!==entry)}:null});
+}
+function medForm(m){
+  const e=m||{kind:'Medication',start:today()};
+  openForm({title:m?'Edit':'Add medication or supplement',
+    body:field('Name',inp('name',e.name,'placeholder="e.g. Metformin, Inositol"'))+
+      `<label class="f"><span>Type</span><select name="kind">${['Medication','Supplement'].map(k=>`<option${k===e.kind?' selected':''}>${k}</option>`).join('')}</select></label>`+
+      `<div class="g2">${field('Dose',inp('dose',e.dose,'placeholder="e.g. 500 mg"'))}${field('How often',inp('freq',e.freq,'placeholder="e.g. 2× a day"'))}</div>`+
+      `<div class="g2">${field('Started',inp('start',e.start,'type="date"'))}${field('Stopped',inp('end',e.end,'type="date"'))}</div>`+
+      field('Notes',`<textarea name="note" placeholder="Why, who prescribed it, side effects">${esc(e.note)}</textarea>`),
+    onSave:f=>{const v=vals(f);if(!v.name.trim())return'Enter a name.';
+      if(v.start&&v.end&&v.end<v.start)return'The stop date is before the start date.';
+      v.name=v.name.trim();if(m)Object.assign(m,v);else db.meds.push({id:uid(),...v})},
+    onDelete:m?()=>{db.meds=db.meds.filter(x=>x!==m)}:null});
+}
+function bodyForm(b){
+  const e=b||{date:today()};
+  openForm({title:b?'Edit entry':'Add body entry',
+    body:field('Date',inp('date',e.date,'type="date"'))+
+      `<div class="g2">${field('Weight (kg)',dec('weight',e.weight))}${field('Waist (cm)',dec('waist',e.waist))}</div>`+
+      `<div class="g2">${field('Blood pressure, upper',dec('sys',e.sys,'e.g. 120'))}${field('Blood pressure, lower',dec('dia',e.dia,'e.g. 80'))}</div>`+
+      `<div class="g2">${field('Sleep (hours)',dec('sleep',e.sleep))}${field('Exercise (minutes)',dec('exercise',e.exercise))}</div>`+
+      field('Notes',`<textarea name="note">${esc(e.note)}</textarea>`)+
+      '<p class="note">Everything is optional: fill in only what you measured.</p>',
+    onSave:f=>{const v=vals(f),o={date:v.date,note:v.note.trim()};
+      if(!v.date)return'Pick a date.';
+      for(const k of['weight','waist','sys','dia','sleep','exercise']){o[k]=num(v[k]);if(isNaN(o[k]))return'Use numbers only in the measurement fields.'}
+      if(!o.note&&['weight','waist','sys','dia','sleep','exercise'].every(k=>o[k]==null))return'Fill in at least one field.';
+      if(b)Object.assign(b,o);else db.body.push({id:uid(),...o})},
+    onDelete:b?()=>{db.body=db.body.filter(x=>x!==b)}:null});
+}
+function periodForm(p){
+  const e=p||{start:today()};
+  openForm({title:p?'Edit period':'Log period',
+    body:`<div class="g2">${field('First day',inp('start',e.start,'type="date"'))}${field('Last day (optional)',inp('end',e.end,'type="date"'))}</div>`,
+    onSave:f=>{const v=vals(f);if(!v.start)return'Pick the first day.';
+      if(v.end&&v.end<v.start)return'The last day is before the first day.';
+      if(p)Object.assign(p,v);else db.periods.push({id:uid(),...v})},
+    onDelete:p?()=>{db.periods=db.periods.filter(x=>x!==p)}:null});
+}
+function noteForm(n){
+  const e=n||{date:today(),type:NOTE_TYPES[0]};
+  openForm({title:n?'Edit note':'Add note or visit',
+    body:`<div class="g2">${field('Date',inp('date',e.date,'type="date"'))}
+      <label class="f"><span>Type</span><select name="type">${NOTE_TYPES.map(t=>`<option${t===e.type?' selected':''}>${t}</option>`).join('')}</select></label></div>`+
+      field('Details',`<textarea name="text" rows="5" placeholder="What was said, findings, what changed">${esc(e.text)}</textarea>`),
+    onSave:f=>{const v=vals(f);if(!v.date)return'Pick a date.';if(!v.text.trim())return'Write a few words.';
+      v.text=v.text.trim();if(n)Object.assign(n,v);else db.notes.push({id:uid(),...v})},
+    onDelete:n?()=>{db.notes=db.notes.filter(x=>x!==n)}:null});
+}
+
+/* ---------- views ---------- */
+let bodyMetric='weight';
+const BODY_METRICS={weight:['Weight','kg'],waist:['Waist','cm'],sleep:['Sleep','h'],exercise:['Exercise','min']};
+const head=(title,back,action)=>`<div class="top">${back?`<button class="back noprint" data-act="back">‹ Back</button>`:''}<h1>${title}</h1>${action||''}</div>`;
+
+function vHome(){
+  const t=today(),act=db.meds.filter(m=>medActive(m,t)),taken=db.taken[t]||[];
+  const hasData=db.labs.length||db.meds.length||db.body.length||db.periods.length||db.notes.length;
+  let h=`<h1>Today</h1><p class="sub">${toDate(t).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</p>`;
+  if(!hasData)h+=`<div class="card"><b>Welcome.</b><p class="sub" style="margin:6px 0 0">Start with whatever you have: your latest blood test results, the medications and supplements you take, or today's weight. Everything is stored on this device only.</p></div>`;
+  if(act.length){
+    h+=`<h2>Taken today</h2><div class="list">`+act.map(m=>`<button class="row${taken.includes(m.id)?' on':''}" data-act="take" data-id="${m.id}" aria-pressed="${taken.includes(m.id)}">
+      <span class="check">✓</span><span class="m"><span class="t">${esc(m.name)}</span><span class="s">${esc([m.dose,m.freq].filter(Boolean).join(' · '))}</span></span></button>`).join('')+'</div>';
+  }
+  const tiles=[];
+  const ws=db.body.filter(b=>b.weight!=null).sort(byDate);
+  if(ws.length){const l=ws[ws.length-1],p=ws[ws.length-2];
+    tiles.push(`<a class="tile" href="#body" style="text-decoration:none"><div class="l">Weight</div><div class="v">${fmt(l.weight)} <small>kg</small></div><div class="d">${p?(l.weight-p.weight>0?'+':'')+fmt(l.weight-p.weight)+' kg since '+fmtDate(p.date):fmtDate(l.date)}</div></a>`)}
+  if(db.labs.length){const d=db.labs.map(e=>e.date).sort().pop(),set=db.labs.filter(e=>e.date===d),out=set.filter(e=>['low','high'].includes(flag(e))).length;
+    tiles.push(`<a class="tile" href="#labs" style="text-decoration:none"><div class="l">Last blood test</div><div class="v">${set.length} <small>result${set.length>1?'s':''}</small></div><div class="d">${fmtDate(d)}${out?' · '+out+' outside range':''}</div></a>`)}
+  const cd=cycleDay(t);
+  if(db.periods.length){const s=periodStarts().pop();
+    tiles.push(`<a class="tile" href="#period" style="text-decoration:none"><div class="l">Cycle</div><div class="v">${cd?'Day '+cd:days(s,t)+' <small>days</small>'}</div><div class="d">Last period ${fmtDate(s)}</div></a>`)}
+  if(tiles.length)h+=`<h2>At a glance</h2><div class="tiles">${tiles.join('')}</div>`;
+  h+=`<h2>Add</h2><div class="btns"><button class="btn primary" data-act="addlab">Lab results</button><button class="btn" data-act="addbody">Weight / body</button>
+    <button class="btn" data-act="addmed">Medication</button><button class="btn" data-act="addnote">Note or visit</button></div>`;
+  return h+backupCard(hasData,t);
+}
+function backupCard(has,t){
+  const card=(title,text,btn)=>`<div class="card" style="margin-top:16px"><b>${title}</b><p class="sub" style="margin:4px 0 10px">${text}</p>${btn}</div>`;
+  if(folder.state==='prompt')return card('Reconnect your backup folder','Until then, changes are saved in this browser only.','<button class="btn primary" data-act="reconnect">Reconnect folder</button>');
+  if(folder.state==='error')return card('Backup folder problem','The last save to the folder failed'+(folder.error?' ('+esc(folder.error)+')':'')+'.','<button class="btn primary" data-act="pickfolder">Choose the folder again</button>');
+  if(folder.state==='ok'||!has)return'';
+  if(folder.state==='none')return card('Protect your data','Choose a folder on this device, for example in Documents. The app then saves a copy there after every change, so clearing the browser cannot lose it.','<button class="btn primary" data-act="pickfolder">Choose backup folder</button>');
+  const lb=db.settings.lastBackup;
+  return!lb||days(lb,t)>30?card('Back up your data',(lb?'Last backup: '+fmtDate(lb)+'.':'No backup yet.')+' Data lives only in this browser, so save a copy now and then.',
+    CAN_SHARE?'<button class="btn" data-act="sharebackup">Send backup to Drive or another app</button>':'<button class="btn" data-act="export">Save backup file</button>'):'';
+}
+function labRowHtml(id,name,sub,pts,valueHtml,chip){
+  return`<a class="row" href="#lab/${encodeURIComponent(id)}" style="text-decoration:none"><span class="m"><span class="t">${esc(name)}</span><span class="s">${sub}</span>${chip?'<div>'+chip+'</div>':''}</span>${spark(pts)}<span class="r">${valueHtml}</span><span class="chev">›</span></a>`;
+}
+function vLabs(){
+  let h=head('Labs',false,'<button class="btn primary" data-act="addlab">+ Add results</button>');
+  if(!db.labs.length)return h+`<div class="card empty">No results yet. Add the values from your latest report (e. sveikata, Synlab, Antėja…). Tests are listed with their Lithuanian names so you can match them to the report.</div>`;
+  const groups=CATALOG.map(([g,ts])=>[g,ts.map(t=>t[0])]);
+  if(db.customTests.length)groups.push(['My tests',db.customTests.map(t=>t.id)]);
+  for(const[g,ids]of groups){
+    const rows=ids.map(id=>{const es=entriesFor(id);if(!es.length)return'';
+      const l=es[es.length-1],m=testMeta(id),pts=es.filter(e=>e.unit===l.unit).map(e=>({d:e.date,v:e.value}));
+      return labRowHtml(id,m.name,fmtDate(l.date),pts,`<b>${fmt(l.value)}</b><br><span>${esc(l.unit)}</span>`,flagChip(flag(l)))}).join('');
+    if(rows)h+=`<h2>${g}</h2><div class="list">${rows}</div>`;
+  }
+  const dv=derived(),calc=Object.keys(CALC).map(k=>{const pts=dv[k];if(!pts.length)return'';const l=pts[pts.length-1];
+    return labRowHtml('calc:'+k,CALC[k].name,fmtDate(l.d),pts,`<b>${fmt(l.v)}</b><br><span>${CALC[k].unit||'&nbsp;'}</span>`,'')}).join('');
+  if(calc)h+=`<h2>Calculated from your results</h2><div class="list">${calc}</div>`;
+  return h;
+}
+function vLab(id){
+  if(id.startsWith('calc:')){
+    const k=id.slice(5),c=CALC[k],pts=derived()[k]||[];
+    if(!c)return head('Not found',true);
+    return head(c.name,true)+`<div class="card">${chart(pts,{unit:c.unit,title:c.name})}</div><p class="note">${c.desc}</p>
+      <h2>History</h2><div class="card"><table><tr><th>Date</th><th>Value</th></tr>${pts.slice().reverse().map(p=>`<tr><td>${fmtDate(p.d)}</td><td class="n">${fmt(p.v)} ${c.unit}</td></tr>`).join('')}</table></div>`;
+  }
+  const m=testMeta(id),es=entriesFor(id);
+  if(!es.length)return head(esc(m.name),true)+'<div class="card empty">No results for this test.</div>';
+  const l=es[es.length-1],same=es.filter(e=>e.unit===l.unit),other=es.length-same.length;
+  let h=head(esc(m.name),true);
+  if(m.lt)h+=`<p class="sub">${esc(m.lt)}</p>`;
+  h+=`<div class="card">${chart(same.map(e=>({d:e.date,v:e.value})),{unit:l.unit,lo:l.refLow,hi:l.refHigh,title:m.name})}</div>`;
+  const notes=[];
+  if(l.refLow!=null||l.refHigh!=null)notes.push(`Shaded band: reference range from your latest report (${refText(l)} ${esc(l.unit)}).`);
+  if(other)notes.push(`${other} result${other>1?'s':''} in a different unit ${other>1?'are':'is'} listed below but not plotted.`);
+  if(notes.length)h+=`<p class="note">${notes.join(' ')}</p>`;
+  h+=`<h2>History</h2><div class="list">`+es.slice().reverse().map(e=>{const cd=cycleDay(e.date);
+    return`<button class="row" data-act="editlab" data-id="${e.id}"><span class="m"><span class="t">${fmtDate(e.date)}</span>
+      <span class="s">${esc([e.lab,refText(e)?'ref. '+refText(e):'',cd?'cycle day '+cd:''].filter(Boolean).join(' · '))}</span><div>${flagChip(flag(e))}</div></span>
+      <span class="r"><b>${fmt(e.value)}</b><br><span>${esc(e.unit)}</span></span></button>`}).join('')+'</div>';
+  return h;
+}
+function adherence(m){
+  const t=toDate(today());let active=0,took=0,any=false;
+  for(const d in db.taken)if(db.taken[d].includes(m.id)){any=true;break}
+  if(!any)return'';
+  for(let i=0;i<30;i++){const d=iso(new Date(t.getFullYear(),t.getMonth(),t.getDate()-i));
+    if(medActive(m,d)){active++;if((db.taken[d]||[]).includes(m.id))took++}}
+  return`Ticked on ${took} of the last ${active} days`;
+}
+function vMeds(){
+  const t=today(),cur=db.meds.filter(m=>!m.end||m.end>=t),past=db.meds.filter(m=>m.end&&m.end<t);
+  const row=m=>`<button class="row" data-act="editmed" data-id="${m.id}"><span class="m"><span class="t">${esc(m.name)} <span class="chip">${esc(m.kind)}</span></span>
+    <span class="s">${esc([m.dose,m.freq].filter(Boolean).join(' · '))}</span>
+    <span class="s">${m.start?fmtDate(m.start):'?'} – ${m.end?fmtDate(m.end):'now'}${adherence(m)?' · '+adherence(m):''}</span>
+    ${m.note?`<span class="s">${esc(m.note)}</span>`:''}</span><span class="chev">›</span></button>`;
+  let h=head('Meds',false,'<button class="btn primary" data-act="addmed">+ Add</button>');
+  if(!db.meds.length)return h+'<div class="card empty">List what you take — metformin, the pill, inositol, vitamin D — with dose and start date. Keeping stop dates gives you a history to compare against your lab trends.</div>';
+  h+=`<h2>Current</h2>`+(cur.length?`<div class="list">${cur.map(row).join('')}</div>`:'<div class="card empty">Nothing current.</div>');
+  if(past.length)h+=`<h2>Stopped</h2><div class="list">${past.sort((a,b)=>a.end<b.end?1:-1).map(row).join('')}</div>`;
+  return h+'<p class="note">Tick doses on the Home tab if you want to track how regularly you take them.</p>';
+}
+function vBody(){
+  let h=head('Body',false,'<button class="btn primary" data-act="addbody">+ Add entry</button>');
+  if(!db.body.length)return h+'<div class="card empty">Log weight, waist, blood pressure, sleep or exercise whenever you have a measurement. No daily entry needed.</div>';
+  const es=db.body.slice().sort(byDate),[mn,mu]=BODY_METRICS[bodyMetric];
+  const pts=es.filter(b=>b[bodyMetric]!=null).map(b=>({d:b.date,v:b[bodyMetric]}));
+  h+=`<div class="seg">${Object.keys(BODY_METRICS).map(k=>`<button data-act="metric" data-id="${k}" class="${k===bodyMetric?'on':''}">${BODY_METRICS[k][0]}</button>`).join('')}</div>`;
+  h+=pts.length?`<div class="card">${chart(pts,{unit:mu,title:mn})}</div>`:`<div class="card empty">No ${mn.toLowerCase()} entries yet.</div>`;
+  const lw=es.filter(b=>b.weight!=null).pop(),ht=db.settings.heightCm;
+  if(bodyMetric==='weight'&&lw)h+=`<p class="note">${ht?'BMI '+(lw.weight/Math.pow(ht/100,2)).toFixed(1)+' at '+fmt(lw.weight)+' kg.':'Add your height under More → Backup &amp; settings to see BMI.'}</p>`;
+  h+=`<h2>Entries</h2><div class="list">`+es.reverse().map(b=>{
+    const bits=[b.weight!=null?fmt(b.weight)+' kg':'',b.waist!=null?'waist '+fmt(b.waist)+' cm':'',b.sys!=null||b.dia!=null?'BP '+fmt(b.sys)+'/'+fmt(b.dia):'',
+      b.sleep!=null?fmt(b.sleep)+' h sleep':'',b.exercise!=null?fmt(b.exercise)+' min exercise':''].filter(Boolean).join(' · ');
+    return`<button class="row" data-act="editbody" data-id="${b.id}"><span class="m"><span class="t">${fmtDate(b.date)}</span><span class="s">${bits}</span>${b.note?`<span class="s">${esc(b.note)}</span>`:''}</span><span class="chev">›</span></button>`}).join('')+'</div>';
+  return h;
+}
+function vMore(){
+  const item=(href,t,s)=>`<a class="row" href="#${href}" style="text-decoration:none"><span class="m"><span class="t">${t}</span><span class="s">${s}</span></span><span class="chev">›</span></a>`;
+  return head('More')+`<div class="list">${item('period','Period log','Start dates and cycle lengths')}${item('notes','Notes and visits','Appointments, ultrasound findings, symptoms')}
+    ${item('summary','Summary for your doctor','One page to show or print')}${item('settings','Backup and settings','Save or restore your data, height')}</div>`;
+}
+function cycles(){const s=periodStarts(),out=[];for(let i=1;i<s.length;i++)out.push({d:s[i],v:days(s[i-1],s[i])});return out}
+function vPeriod(){
+  let h=head('Period log',true,'<button class="btn primary" data-act="addperiod">+ Log period</button>');
+  if(!db.periods.length)return h+'<div class="card empty">Optional, but useful: logging just the first day of each period gives your cycle lengths, which is one of the main things doctors ask about.</div>';
+  const cs=cycles(),recent=cs.slice(-6);
+  if(cs.length){
+    const avg=recent.reduce((a,c)=>a+c.v,0)/recent.length;
+    h+=`<div class="tiles"><div class="tile"><div class="l">Average cycle (last ${recent.length})</div><div class="v">${avg.toFixed(1)} <small>days</small></div></div>
+      <div class="tile"><div class="l">Longest (last ${recent.length})</div><div class="v">${Math.max(...recent.map(c=>c.v))} <small>days</small></div></div></div>
+      <h2>Cycle length</h2><div class="card">${chart(cs,{unit:'days',lo:21,hi:35,title:'Cycle length'})}</div><p class="note">Shaded band: 21–35 days, the usual definition of a regular cycle.</p>`;
+  }
+  const ps=db.periods.slice().sort((a,b)=>a.start<b.start?1:-1),st=periodStarts();
+  h+=`<h2>Periods</h2><div class="list">`+ps.map(p=>{const i=st.indexOf(p.start),len=i>0?days(st[i-1],p.start):null;
+    return`<button class="row" data-act="editperiod" data-id="${p.id}"><span class="m"><span class="t">${fmtDate(p.start)}</span>
+      <span class="s">${[p.end?days(p.start,p.end)+1+' days of bleeding':'',len?'cycle before it: '+len+' days':''].filter(Boolean).join(' · ')}</span>
+      ${len>35?'<div><span class="chip warn">Long cycle</span></div>':''}</span><span class="chev">›</span></button>`}).join('')+'</div>';
+  return h;
+}
+function vNotes(){
+  let h=head('Notes and visits',true,'<button class="btn primary" data-act="addnote">+ Add</button>');
+  if(!db.notes.length)return h+'<div class="card empty">Keep doctor visits, ultrasound findings and symptoms worth mentioning here, dated, so nothing gets forgotten before the next appointment.</div>';
+  return h+'<div class="list">'+db.notes.slice().sort((a,b)=>-byDate(a,b)).map(n=>`<button class="row" data-act="editnote" data-id="${n.id}"><span class="m">
+    <span class="t">${fmtDate(n.date)} <span class="chip">${esc(n.type)}</span></span><span class="s" style="white-space:pre-wrap">${esc(n.text)}</span></span><span class="chev">›</span></button>`).join('')+'</div>';
+}
+function vSummary(){
+  const t=today();
+  let h=head('Summary',true,'<button class="btn primary noprint" data-act="print">Print / PDF</button>')+`<p class="sub">Health tracker summary · ${fmtDate(t)}</p>`;
+  const cur=db.meds.filter(m=>!m.end||m.end>=t),yr=iso(new Date(new Date().getFullYear()-1,new Date().getMonth(),new Date().getDate()));
+  const stopped=db.meds.filter(m=>m.end&&m.end<t&&m.end>=yr);
+  h+='<h2>Current medications and supplements</h2><div class="card">'+(cur.length?`<table><tr><th>Name</th><th>Dose</th><th>Since</th></tr>${cur.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc([m.dose,m.freq].filter(Boolean).join(', '))}</td><td class="n">${fmtDate(m.start)}</td></tr>`).join('')}</table>`:'None recorded.')+'</div>';
+  if(stopped.length)h+=`<h2>Stopped in the last 12 months</h2><div class="card"><table><tr><th>Name</th><th>Dose</th><th>Period</th></tr>${stopped.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc([m.dose,m.freq].filter(Boolean).join(', '))}</td><td class="n">${fmtDate(m.start)} – ${fmtDate(m.end)}</td></tr>`).join('')}</table></div>`;
+  const ids=[...new Set(db.labs.map(e=>e.test))],order=CATALOG.flatMap(g=>g[1].map(x=>x[0]));
+  ids.sort((a,b)=>(order.indexOf(a)+1||99)-(order.indexOf(b)+1||99));
+  if(ids.length){
+    h+=`<h2>Latest lab results</h2><div class="card"><table><tr><th>Test</th><th>Result</th><th>Ref.</th><th>Previous</th></tr>`+ids.map(id=>{
+      const es=entriesFor(id),l=es[es.length-1],p=es[es.length-2],f=flag(l);
+      return`<tr><td>${esc(testMeta(id).name)}</td><td class="n"><b>${fmt(l.value)}</b> ${esc(l.unit)}${f==='high'?' ↑':f==='low'?' ↓':''}<br><small>${fmtDate(l.date)}</small></td><td class="n">${refText(l)}</td><td class="n">${p?fmt(p.value)+'<br><small>'+fmtDate(p.date)+'</small>':''}</td></tr>`}).join('');
+    const dv=derived();
+    for(const k in CALC)if(dv[k].length){const l=dv[k][dv[k].length-1];h+=`<tr><td>${CALC[k].name} (calculated)</td><td class="n"><b>${fmt(l.v)}</b> ${CALC[k].unit}<br><small>${fmtDate(l.d)}</small></td><td></td><td></td></tr>`}
+    h+='</table></div>';
+  }
+  const cs=cycles().slice(-6);
+  if(db.periods.length)h+=`<h2>Cycles</h2><div class="card">Last period: ${fmtDate(periodStarts().pop())}.${cs.length?' Recent cycle lengths (oldest first): '+cs.map(c=>c.v).join(', ')+' days.':''}</div>`;
+  const body=db.body.slice().sort(byDate),lines=[];
+  for(const[k,label,u]of[['weight','Weight','kg'],['waist','Waist','cm']]){
+    const s=body.filter(b=>b[k]!=null);if(!s.length)continue;const l=s[s.length-1],f=s[0];
+    lines.push(`${label}: ${fmt(l[k])} ${u} (${fmtDate(l.date)})${s.length>1?', from '+fmt(f[k])+' '+u+' on '+fmtDate(f.date):''}.`)}
+  const bp=body.filter(b=>b.sys!=null&&b.dia!=null).pop();if(bp)lines.push(`Blood pressure: ${fmt(bp.sys)}/${fmt(bp.dia)} (${fmtDate(bp.date)}).`);
+  if(lines.length)h+=`<h2>Body</h2><div class="card">${lines.join('<br>')}</div>`;
+  const ns=db.notes.slice().sort((a,b)=>-byDate(a,b)).slice(0,8);
+  if(ns.length)h+=`<h2>Recent notes</h2><div class="card"><table>${ns.map(n=>`<tr><td class="n">${fmtDate(n.date)}</td><td>${esc(n.type)}</td><td style="white-space:pre-wrap">${esc(n.text)}</td></tr>`).join('')}</table></div>`;
+  if(!ids.length&&!cur.length&&!lines.length&&!db.periods.length&&!ns.length)h+='<div class="card empty">Nothing to summarise yet.</div>';
+  return h;
+}
+function vSettings(){
+  const lb=db.settings.lastBackup,name=folder.handle?esc(folder.handle.name):'';
+  const saved=folder.saved?new Date(folder.saved).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  let f;
+  if(folder.state==='unsupported')f='<p class="sub" style="margin:0">This browser cannot save to a folder by itself (that needs a recent version of Chrome). Use a backup file instead.</p>';
+  else if(folder.state==='none')f=`<p class="sub" style="margin-top:0">Choose a folder on this device, for example in Documents. The app then saves a copy of everything there after each change. If the browser data is ever cleared, choose the same folder again and everything comes back.</p>
+    <button class="btn primary" data-act="pickfolder">Choose backup folder</button>`;
+  else f=`<p class="sub" style="margin-top:0">${folder.state==='ok'?'✓ Saving automatically to':folder.state==='prompt'?'Needs reconnecting:':'Last save failed:'} <b>${name}</b>${saved?', last saved '+saved:''}.${folder.state==='error'&&folder.error?' '+esc(folder.error):''}
+    It holds ${DATA_FILE} plus one snapshot per month.</p>
+    <div class="btns">${folder.state==='prompt'?'<button class="btn primary" data-act="reconnect">Reconnect</button>':''}<button class="btn" data-act="pickfolder">Change folder</button><button class="btn" data-act="dropfolder">Stop using folder</button></div>`;
+  return head('Backup and settings',true)+`<h2>Backup folder</h2><div class="card">${f}</div>
+    <h2>Backup file</h2><div class="card"><p class="sub" style="margin-top:0">A single file with everything in it, to keep somewhere else or move to another device. ${lb?'Last one: '+fmtDate(lb)+'.':'None saved yet.'}</p>
+    <div class="btns"><button class="btn" data-act="export">Save backup file</button><button class="btn" data-act="import">Restore from file</button></div>
+    ${CAN_SHARE?'<button class="btn block" style="margin-top:8px" data-act="sharebackup">Send backup to Drive or another app</button>':''}
+    <input type="file" id="file" accept=".json,.txt,application/json,text/plain" hidden>
+    <button class="btn block" style="margin-top:8px" data-act="csv">Export lab results as spreadsheet (CSV)</button></div>
+    <h2>Height</h2><div class="card">${field('Height (cm), used for BMI',dec('height',db.settings.heightCm))}<button class="btn" data-act="saveheight">Save height</button></div>
+    <h2>Erase</h2><div class="card"><button class="btn danger" data-act="wipe">Erase all data on this device</button></div>`;
+}
+
+/* ---------- router ---------- */
+const VIEWS={home:vHome,labs:vLabs,lab:vLab,meds:vMeds,body:vBody,more:vMore,period:vPeriod,notes:vNotes,summary:vSummary,settings:vSettings};
+const TAB={lab:'labs',period:'more',notes:'more',summary:'more',settings:'more'};
+function route(){const[v,a]=location.hash.slice(1).split('/');return VIEWS[v]?[v,a?decodeURIComponent(a):'']:['home','']}
+function render(){
+  const[v,a]=route();
+  $('#app').innerHTML=VIEWS[v](a);
+  document.querySelectorAll('#nav a').forEach(n=>n.classList.toggle('on',n.dataset.tab===(TAB[v]||v)));
+}
+window.addEventListener('hashchange',()=>{render();scrollTo(0,0)});
+
+/* ---------- actions ---------- */
+function download(name,text,type){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+const ACT={
+  close:()=>$('#dlg').close(),
+  del:()=>{const d=$('#dlg');if(confirm('Delete this entry?')){d._del();d.close();save();if(route()[0]==='lab'&&!entriesFor(route()[1]).length)location.hash='#labs';else render()}},
+  back:()=>history.length>1?history.back():(location.hash='#home'),
+  addlab:()=>labForm(),addmed:()=>medForm(),addbody:()=>bodyForm(),addperiod:()=>periodForm(),addnote:()=>noteForm(),
+  editlab:id=>labForm(byId(db.labs,id)),editmed:id=>medForm(byId(db.meds,id)),editbody:id=>bodyForm(byId(db.body,id)),
+  editperiod:id=>periodForm(byId(db.periods,id)),editnote:id=>noteForm(byId(db.notes,id)),
+  addrow:()=>$('#rows').insertAdjacentHTML('beforeend',labRow()),
+  rmrow:(id,el)=>{const r=el.closest('.labrow');if(document.querySelectorAll('#rows .labrow').length>1)r.remove();else r.outerHTML=labRow()},
+  take:id=>{const t=today(),a=db.taken[t]||(db.taken[t]=[]),i=a.indexOf(id);if(i<0)a.push(id);else a.splice(i,1);if(!a.length)delete db.taken[t];save();render()},
+  metric:id=>{bodyMetric=id;render()},
+  print:()=>window.print(),
+  export:()=>{db.settings.lastBackup=today();save();download('health-tracker-backup-'+today()+'.json',JSON.stringify(db,null,1),'application/json');render()},
+  import:()=>$('#file').click(),
+  csv:()=>{const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+    const rows=[['date','test','lithuanian_name','value','unit','ref_low','ref_high','lab']].concat(db.labs.slice().sort(byDate).map(e=>{const m=testMeta(e.test);return[e.date,m.name,m.lt,e.value,e.unit,e.refLow,e.refHigh,e.lab]}));
+    download('lab-results-'+today()+'.csv','﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),'text/csv')},
+  saveheight:()=>{const n=num($('[name=height]').value);if(isNaN(n)){alert('Enter height as a number in cm.');return}db.settings.heightCm=n;save();render()},
+  fill:id=>{
+    const d=db.labs.map(e=>e.date).sort().pop(),ids=id==='last'?db.labs.filter(e=>e.date===d).map(e=>e.test):PANELS[id][1];
+    const n=addRows(ids.map(test=>({test})));
+    fillMsg(n?`Added ${n} test${n>1?'s':''}. Type the results you have; rows left empty are ignored.`:'Those tests are already in the list.')},
+  showpaste:()=>{const p=$('#paste');p.hidden=!p.hidden;if(!p.hidden)$('#pastetext').focus()},
+  readpaste:()=>{
+    const r=parseReport($('#pastetext').value),n=r.items.length;
+    if(!n){fillMsg('No known tests found in that text. Add them by hand below.');return}
+    if(r.date)$('#dlg [name=date]').value=r.date;
+    addRows(r.items);$('#paste').hidden=true;
+    fillMsg(`Read ${n} result${n>1?'s':''}${r.date?' and the date':''}. Check every number, unit and range against the report before saving.`)},
+  pickfolder:async()=>{
+    try{let h;
+      try{h=await showDirectoryPicker({mode:'readwrite',id:'health-tracker',startIn:'documents'})}
+      catch(e){if(e.name==='AbortError')throw e;h=await showDirectoryPicker({mode:'readwrite'})}
+      await setFolder(h);
+    }catch(e){if(e.name!=='AbortError')alert('Could not use that folder: '+(e.message||e))}},
+  reconnect:async()=>{try{if(await folder.handle.requestPermission({mode:'readwrite'})==='granted'){folder.state='ok';await syncFolder()}}catch(e){}render()},
+  dropfolder:async()=>{if(!confirm('Stop saving to the folder? The files already in it are kept.'))return;
+    await idb('readwrite',st=>st.delete('dir'));folder.handle=null;folder.state='none';render()},
+  sharebackup:async()=>{
+    try{await navigator.share({files:[new File([JSON.stringify(db,null,1)],'health-tracker-backup-'+today()+'.txt',{type:'text/plain'})],title:'Health tracker backup'});
+      db.settings.lastBackup=today();save();render()}catch(e){}},
+  wipe:()=>{if(confirm('Erase ALL tracker data on this device? This cannot be undone.')&&confirm('Really erase everything?')){db=blank();save();render()}}
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const fn=ACT[el.dataset.act];if(fn)fn(el.dataset.id,el);
+});
+document.addEventListener('change',e=>{
+  if(e.target.matches('#dlg select[name=test]'))onTestChange(e.target);
+  if(e.target.id==='file'&&e.target.files[0]){
+    const r=new FileReader();
+    r.onload=()=>{try{const o=JSON.parse(r.result);
+        if(!o||!o.version||!Array.isArray(o.labs))throw 0;
+        if(confirm('Replace everything on this device with the contents of this backup?')){db=Object.assign(blank(),o);save();render()}
+      }catch(err){alert('That file is not a Health tracker backup.')}};
+    r.readAsText(e.target.files[0]);
+  }
+});
+
+render();
+initFolder();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
