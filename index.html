@@ -113,6 +113,9 @@ textarea{min-height:76px;resize:vertical}
 .lr2 input,.lr2 select{padding:8px 6px;font-size:14px;min-width:0}
 .labrow .rm{background:none;border:0;color:var(--ink2);font-size:16px;width:40px;flex:none;cursor:pointer}
 .err{color:var(--danger);font-size:14px;margin:0;padding:0 16px 8px}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--page);
+  padding:10px 14px;border-radius:10px;font-size:14px;width:max-content;max-width:calc(100vw - 32px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.show{opacity:1}
 @media print{
   nav,.noprint{display:none!important}
   body{background:#fff;color:#000;padding:0}
@@ -481,6 +484,10 @@ function addRows(items){
   if(!rows.children.length)rows.insertAdjacentHTML('beforeend',labRow());
   return added;
 }
+function toast(t){
+  let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.setAttribute('role','status');document.body.appendChild(e)}
+  e.textContent=t;e.className='show';clearTimeout(toast.timer);toast.timer=setTimeout(()=>{e.className=''},4500);
+}
 function fillMsg(t){const p=$('#fillmsg');p.textContent=t;p.hidden=false}
 /* best-effort reader for text copied out of a lab report. Copying a table gives different text depending on the
    viewer, so it handles: one result per line, everything run together on one line, one table cell per line,
@@ -630,7 +637,16 @@ function labForm(entry){
         out.push({id:uid(),date,lab,test,value,unit:q('unit'),refLow:lo,refHigh:hi});
       }
       if(!out.length)return'Enter at least one result.';
-      if(single)Object.assign(entry,out[0],{id:entry.id});else db.labs.push(...out);
+      if(single){Object.assign(entry,out[0],{id:entry.id});return}
+      // one result per test per day: entering it again corrects the stored one instead of duplicating it
+      let added=0,updated=0,same=0;
+      for(const o of out){
+        const ex=db.labs.find(x=>x.test===o.test&&x.date===o.date);
+        if(!ex){db.labs.push(o);added++}
+        else if(ex.value===o.value&&ex.unit===o.unit&&ex.refLow===o.refLow&&ex.refHigh===o.refHigh)same++;
+        else{Object.assign(ex,o,{id:ex.id,lab:o.lab||ex.lab});updated++}
+      }
+      toast([added&&added+' added',updated&&updated+' updated',same&&same+' already saved'].filter(Boolean).join(', ')+' for '+fmtDate(date));
     },
     onDelete:single?()=>{db.labs=db.labs.filter(x=>x!==entry)}:null});
 }
