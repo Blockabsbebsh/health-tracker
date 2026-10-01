@@ -877,7 +877,7 @@ function vSettings(){
   const lb=db.settings.lastBackup,name=folder.handle?esc(folder.handle.name):'';
   const saved=folder.saved?new Date(folder.saved).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
   let f;
-  if(folder.state==='unsupported')f='<p class="sub" style="margin:0">This browser cannot save to a folder by itself (that needs a recent version of Chrome). Use a backup file instead.</p>';
+  if(folder.state==='unsupported')f='<p class="sub" style="margin:0">This browser cannot save to a folder by itself: Firefox and Safari do not offer that, Chrome does. To get automatic backups, save a backup file below, open this app in Chrome, restore the file there and choose a folder. Otherwise, save a backup file now and then.</p>';
   else if(folder.state==='none')f=`<p class="sub" style="margin-top:0">Choose a folder on this device, for example in Documents. The app then saves a copy of everything there after each change. If the browser data is ever cleared, choose the same folder again and everything comes back.</p>
     <button class="btn primary" data-act="pickfolder">Choose backup folder</button>`;
   else f=`<p class="sub" style="margin-top:0">${folder.state==='ok'?'✓ Saving automatically to':folder.state==='prompt'?'Needs reconnecting:':'Last save failed:'} <b>${name}</b>${saved?', last saved '+saved:''}.${folder.state==='error'&&folder.error?' '+esc(folder.error):''}
