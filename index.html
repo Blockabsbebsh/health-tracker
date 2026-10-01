@@ -150,8 +150,8 @@ const CATALOG=[
   ['amh','AMH','Anti-Miulerio hormonas',['ng/mL','pmol/L']],
   ['prl','Prolactin','Prolaktinas',['mIU/L','ng/mL']]]],
  ['Thyroid',[
-  ['tsh','TSH','TTH – tirotropinis hormonas',['mIU/L']],
-  ['ft4','Free T4','Laisvas tiroksinas (FT4)',['pmol/L']]]],
+  ['tsh','TSH','TTH – tirotropinis hormonas',['mIU/L'],'TSH'],
+  ['ft4','Free T4','Laisvas tiroksinas (FT4)',['pmol/L'],'FT4']]],
  ['Glucose and insulin',[
   ['glu','Fasting glucose','Gliukozė (nevalgius)',['mmol/L']],
   ['ins','Fasting insulin','Insulinas',['mU/L','pmol/L']],
@@ -166,10 +166,48 @@ const CATALOG=[
   ['vitd','Vitamin D (25-OH)','Vitaminas D',['nmol/L','ng/mL']],
   ['b12','Vitamin B12','Vitaminas B12',['pmol/L','pg/mL']],
   ['ferr','Ferritin','Feritinas',['µg/L']],
-  ['alt','ALT','ALT – alanininė aminotransferazė',['U/L']],
   ['crp','CRP','CRB – C reaktyvusis baltymas',['mg/L']],
-  ['cort','Cortisol','Kortizolis',['nmol/L']]]]
+  ['cort','Cortisol','Kortizolis',['nmol/L']]]],
+ ['Liver',[
+  ['alt','ALT','Alanino aminotransferazė',['U/L'],'ALT'],
+  ['ast','AST','Aspartato aminotransferazė',['U/L'],'AST'],
+  ['ggt','GGT','Gama gliutamiltransferazė',['U/L'],'GGT'],
+  ['alp','ALP','Šarminė fosfatazė',['U/L'],'ALP']]],
+ ['Kidney and electrolytes',[
+  ['urea','Urea','Šlapalas',['mmol/L'],'UREA'],
+  ['crea','Creatinine','Kreatininas',['µmol/L'],'CREA'],
+  ['k','Potassium','Kalis',['mmol/L'],'K'],
+  ['na','Sodium','Natris',['mmol/L'],'NA'],
+  ['mg','Magnesium','Magnis',['mmol/L'],'MG'],
+  ['cl','Chloride','Chloridai',['mmol/L'],'CL']]],
+ ['Blood count',[
+  ['wbc','White blood cells (WBC)','Leukocitai',['10^9/L'],'WBC'],
+  ['rbc','Red blood cells (RBC)','Eritrocitai',['10^12/L'],'RBC'],
+  ['hgb','Haemoglobin (HGB)','Hemoglobinas',['g/L'],'HGB'],
+  ['hct','Haematocrit (HCT)','Hematokritas',['%'],'HCT'],
+  ['mcv','MCV','Vidutinis eritrocitų tūris',['fL'],'MCV'],
+  ['mch','MCH','Vidutinis hemoglobino kiekis eritrocite',['pg'],'MCH'],
+  ['mchc','MCHC','Vidutinė eritrocitų hemoglobino koncentracija',['g/L'],'MCHC'],
+  ['rdwcv','RDW-CV','Eritrocitų pasiskirstymo plotis (variacijos koef.)',['%'],'RDW-CV'],
+  ['rdwsd','RDW-SD','Eritrocitų pasiskirstymo plotis (standartinis nuokr.)',['fL'],'RDW-SD'],
+  ['plt','Platelets (PLT)','Trombocitai',['10^9/L'],'PLT'],
+  ['mpv','MPV','Trombocitų vidutinis tūris',['fL'],'MPV'],
+  ['pdw','PDW','Trombocitų pasiskirstymo plotis',['fL'],'PDW'],
+  ['pct','Plateletcrit (PCT)','Trombokritas',['%'],'PCT'],
+  ['plcr','P-LCR','Didelių trombocitų santykis',['%'],'P-LCR'],
+  ['neut','Neutrophils','Neutrofilai (NEUT#)',['10^9/L'],'NEUT#'],
+  ['neutp','Neutrophils %','Neutrofilai (NEUT%)',['%'],'NEUT%'],
+  ['lymph','Lymphocytes','Limfocitai (LYMPH#)',['10^9/L'],'LYMPH#'],
+  ['lymphp','Lymphocytes %','Limfocitai (LYMPH%)',['%'],'LYMPH%'],
+  ['mono','Monocytes','Monocitai (MON#)',['10^9/L'],'MON#'],
+  ['monop','Monocytes %','Monocitai (MON%)',['%'],'MON%'],
+  ['eo','Eosinophils','Eozinofilai (EO#)',['10^9/L'],'EO#'],
+  ['eop','Eosinophils %','Eozinofilai (EO%)',['%'],'EO%'],
+  ['baso','Basophils','Bazofilai (BASO#)',['10^9/L'],'BASO#'],
+  ['basop','Basophils %','Bazofilai (BASO%)',['%'],'BASO%']]]
 ];
+/* short code printed in brackets on e. sveikata reports -> test id */
+const CODE_MAP={};CATALOG.forEach(g=>g[1].forEach(t=>{if(t[4])CODE_MAP[t[4]]=t[0]}));
 const CALC={
  homa:{name:'HOMA-IR',unit:'',desc:'Fasting glucose (mmol/L) × fasting insulin (mU/L) ÷ 22.5, from results taken on the same day. An estimate of insulin resistance: higher means more resistance. Cut-offs vary between labs and populations, so read it with your doctor.'},
  lhfsh:{name:'LH : FSH ratio',unit:'',desc:'LH ÷ FSH from results taken on the same day. Most meaningful on cycle days 2–5.'},
@@ -181,7 +219,9 @@ const PANELS={
  hormones:['Hormones',['t_total','shbg','dheas','lh','fsh','e2','prl','amh']],
  metabolic:['Glucose and insulin',['glu','ins','hba1c']],
  lipids:['Lipids',['chol','hdl','ldl','tg']],
- other:['Thyroid and vitamins',['tsh','ft4','vitd','b12','ferr']]
+ other:['Thyroid and vitamins',['tsh','ft4','vitd','b12','ferr']],
+ chem:['Liver, kidney, electrolytes',['alt','ast','ggt','alp','urea','crea','k','na','mg','cl']],
+ blood:['Blood count',CATALOG.find(g=>g[0]==='Blood count')[1].map(t=>t[0])]
 };
 /* names used to recognise tests in pasted report text; checked in this order, more specific first */
 const ALIASES=[
@@ -197,7 +237,7 @@ const ALIASES=[
  ['e2',['estradiolis','estradiol','e2']],
  ['amh',['anti-miulerio hormonas','antimiulerio hormonas','anti-mullerian hormone','amh']],
  ['prl',['prolaktinas','prolactin']],
- ['tsh',['tirotropinis hormonas','tirotropinas','tth','tsh']],
+ ['tsh',['tirotropinis hormonas','tireotropinis hormonas','tirotropinas','tth','tsh']],
  ['ft4',['laisvas tiroksinas','laisvasis tiroksinas','free t4','ft4','lt4']],
  ['glu120',['gliukoze po 2 val','po 2 val']],
  ['glu',['gliukoze','gliukozes','glucose']],
@@ -211,7 +251,7 @@ const ALIASES=[
  ['vitd',['25-oh vitaminas d','vitaminas d','vitamino d','vitamin d','25-oh-d']],
  ['b12',['b12']],
  ['ferr',['feritinas','ferritin']],
- ['alt',['alanininaminotransferaze','alat','alt','gpt']],
+ ['alt',['alanino aminotransferaze','alanininaminotransferaze','alat','alt','gpt']],
  ['crp',['c reaktyvusis baltymas','c reaktyvus baltymas','crb','crp']],
  ['cort',['kortizolis','cortisol']]
 ];
@@ -480,7 +520,40 @@ function normUnit(id,raw){
   if(!/[\/%]/.test(raw)&&!us.some(u=>u.toLowerCase()===raw))return null; // "h", "l" and the like are flags, not units
   return us.find(u=>u.toLowerCase()===raw)||(UNIT_EQ[raw]||[]).find(u=>us.includes(u))||raw.replace(/l$/,'L');
 }
+/* e. sveikata record text: "Hemoglobinas (HGB) 127 (norma nuo 120 iki 150) g/l, Eritrocitai (RBC) 4,3 (norma ...) 10^12/l, ..."
+   The short code in brackets identifies the test; tests the app does not know yet are added under "My tests". */
+function parseListed(text){
+  const t=text.replace(/<br\s*\/?>/gi,'\n').replace(/ /g,' ').replace(/μ/g,'µ');
+  const re=new RegExp('\\((?!\\s*norma)([^()]{1,20})\\)\\s*[<>]?\\s*('+NUM+')[ \\t]*(?:\\(\\s*norma([^()]*)\\))?[ \\t]*([^\\s,;<(]*)','gi');
+  const items=[],seen={};let m,prev=0,made=0;
+  while((m=re.exec(t))){
+    const code=m[1].trim(),name=t.slice(prev,m.index).split(/:|\n|,\s|;/).pop().trim();
+    prev=re.lastIndex;
+    if(!name)continue;
+    let unit=m[4].replace(/\.+$/,'');if(!/^(10\^\d+\/[a-zµ]+|[a-zµ%]\S*)$/i.test(unit))unit='';
+    let id=CODE_MAP[code.toUpperCase()];
+    if(!id){const h=allHits(norm(name+' ('+code+')')).find(x=>x.id);if(h)id=h.id}
+    if(!id){
+      id='c_'+code.toLowerCase().replace(/#/g,'_n').replace(/%/g,'_p').replace(/[^a-z0-9_]+/g,'_');
+      if(!db.customTests.some(c=>c.id===id)){db.customTests.push({id,name:name+' ('+code+')',units:[unit]});made++}
+    }
+    if(seen[id])continue;seen[id]=1;
+    const it={test:id,value:num(m[2])},nu=normUnit(id,unit.toLowerCase());
+    it.unit=nu&&testMeta(id).units.includes(nu)?nu:unit||null;
+    if(m[3]!=null){
+      const q=p=>{const r=m[3].match(new RegExp(p+'\\s*=?\\s*('+NUM+')','i'));return r?num(r[1]):null};
+      const lo=q('nuo'),hi=q('iki'),gt=q('[>≥]'),lt=q('[<≤]');
+      it.refLow=lo!=null?lo:gt;it.refHigh=hi!=null?hi:lt;
+    }
+    items.push(it);
+  }
+  if(!items.length)return null;
+  if(made)save();
+  const dates=[...new Set(t.match(/\b20\d\d-\d\d-\d\d\b/g)||[])];
+  return{date:dates[0]||null,dates:dates.length,items,pend:[]};
+}
 function parseReport(text){
+  const listed=parseListed(text);if(listed)return listed;
   const L=norm(text).replace(/\r/g,'').split('\n').map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean),t=L.join('\n');
   const items=[],seen={},pend=[]; // pend: test names found without a result that could be read safely
   const dm=t.match(/(?:paem|paimt|eminio|meginio|tyrimo data|collect|sampl)[^\n]{0,40}?\b(20\d\d)[-./](\d\d)[-./](\d\d)\b/);
@@ -659,7 +732,7 @@ function vLabs(){
   for(const[g,ids]of groups){
     const rows=ids.map(id=>{const es=entriesFor(id);if(!es.length)return'';
       const l=es[es.length-1],m=testMeta(id),pts=es.filter(e=>e.unit===l.unit).map(e=>({d:e.date,v:e.value}));
-      return labRowHtml(id,m.name,fmtDate(l.date),pts,`<b>${fmt(l.value)}</b><br><span>${esc(l.unit)}</span>`,flagChip(flag(l)))}).join('');
+      return labRowHtml(id,m.name,fmtDate(l.date)+(refText(l)?' · norm '+refText(l):''),pts,`<b>${fmt(l.value)}</b><br><span>${esc(l.unit)}</span>`,flagChip(flag(l)))}).join('');
     if(rows)h+=`<h2>${g}</h2><div class="list">${rows}</div>`;
   }
   const dv=derived(),calc=Object.keys(CALC).map(k=>{const pts=dv[k];if(!pts.length)return'';const l=pts[pts.length-1];
@@ -851,6 +924,7 @@ const ACT={
     addRows(r.items.concat(r.pend.map(test=>({test}))));$('#paste').hidden=true;
     fillMsg((n?`Read ${n} result${n>1?'s':''}${r.date?' and the date':''}. `:'')+
       (p?`Found ${p} ${n?'more ':''}test name${p>1?'s':''} without a result I could read safely: ${p>1?'their rows are':'its row is'} added empty for you to fill in. `:'')+
+      (r.dates>1?'The text has more than one date: I used the first, so paste one test date at a time. ':'')+
       'Check every number, unit and range against the report before saving.')},
   pickfolder:async()=>{
     try{let h;
