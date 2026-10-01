@@ -883,8 +883,8 @@ function vSettings(){
   else f=`<p class="sub" style="margin-top:0">${folder.state==='ok'?'✓ Saving automatically to':folder.state==='prompt'?'Needs reconnecting:':'Last save failed:'} <b>${name}</b>${saved?', last saved '+saved:''}.${folder.state==='error'&&folder.error?' '+esc(folder.error):''}
     It holds ${DATA_FILE} plus one snapshot per month.</p>
     <div class="btns">${folder.state==='prompt'?'<button class="btn primary" data-act="reconnect">Reconnect</button>':''}<button class="btn" data-act="pickfolder">Change folder</button><button class="btn" data-act="dropfolder">Stop using folder</button></div>`;
-  return head('Backup and settings',true)+`<h2>Backup folder</h2><div class="card">${f}</div>
-    <h2>Backup file</h2><div class="card"><p class="sub" style="margin-top:0">A single file with everything in it, to keep somewhere else or move to another device. ${lb?'Last one: '+fmtDate(lb)+'.':'None saved yet.'}</p>
+  return head('Backup and settings',true)+`<h2>Automatic backup (folder)</h2><div class="card">${f}</div>
+    <h2>One-off backup file</h2><div class="card"><p class="sub" style="margin-top:0">A snapshot of everything as it is right now, to keep somewhere else or move to another device. It does not update by itself: for that, use the folder above. ${lb?'Last one: '+fmtDate(lb)+'.':'None saved yet.'}</p>
     <div class="btns"><button class="btn" data-act="export">Save backup file</button><button class="btn" data-act="import">Restore from file</button></div>
     ${CAN_SHARE?'<button class="btn block" style="margin-top:8px" data-act="sharebackup">Send backup to Drive or another app</button>':''}
     <input type="file" id="file" accept=".json,.txt,application/json,text/plain" hidden>
@@ -974,6 +974,12 @@ document.addEventListener('change',e=>{
 
 render();
 initFolder();
+// if the browser wants the folder permission confirmed again, ask on the first tap instead of waiting for the Reconnect button
+let askedFolder=false;
+document.addEventListener('click',e=>{
+  if(folder.state!=='prompt'||askedFolder||e.target.closest('[data-act=reconnect]'))return;
+  askedFolder=true;ACT.reconnect();
+},true);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js');
 </script>
