@@ -185,15 +185,15 @@ const PANELS={
 };
 /* names used to recognise tests in pasted report text; checked in this order, more specific first */
 const ALIASES=[
- ['t_free',['laisvas testosteronas','laisvasis testosteronas','free testosterone']],
+ ['t_free',['laisvas testosteronas','laisvasis testosteronas','testosteronas laisvas','free testosterone']],
  ['t_total',['testosteronas','testosterone']],
- ['shbg',['lytinius hormonus surisantis globulinas','shbg','lhsg']],
+ ['shbg',['lytinius hormonus surisantis globulinas','seksualinius hormonus surisantis globulinas','shbg','lhsg']],
  ['dheas',['dehidroepiandrosterono sulfatas','dhea-so4','dhea-s','dheas','dhea']],
  ['androst',['androstendionas','androstenedione']],
  ['ohp17',['17-oh progesteronas','17-oh-progesteronas','17 oh progesteronas','17-hidroksiprogesteronas','17-oh progesterone','17-ohp']],
  ['prog',['progesteronas','progesterone']],
- ['lh',['liuteinizuojantis hormonas','lh']],
- ['fsh',['folikulus stimuliuojantis hormonas','fsh']],
+ ['lh',['liuteinizuojantis hormonas','liutropinas','lh']],
+ ['fsh',['folikulus stimuliuojantis hormonas','folitropinas','fsh']],
  ['e2',['estradiolis','estradiol','e2']],
  ['amh',['anti-miulerio hormonas','antimiulerio hormonas','anti-mullerian hormone','amh']],
  ['prl',['prolaktinas','prolactin']],
@@ -203,11 +203,12 @@ const ALIASES=[
  ['glu',['gliukoze','gliukozes','glucose']],
  ['ins',['insulinas','insulin']],
  ['hba1c',['glikuotas hemoglobinas','glikozilintas hemoglobinas','hba1c']],
- ['hdl',['dtl','hdl']],
- ['ldl',['mtl','ldl']],
- ['chol',['cholesterolis','cholesterol']],
+ [null,['ne-dtl cholesterolis','ne dtl cholesterolis','ne-dtl','non-hdl cholesterol','non-hdl']], // recognised only so it is not mistaken for HDL
+ ['hdl',['dtl cholesterolis','dtl-cholesterolis','dtl cholesterolio','dtl-cholesterolio','hdl cholesterol','dtl','hdl']],
+ ['ldl',['mtl cholesterolis','mtl-cholesterolis','mtl cholesterolio','mtl-cholesterolio','ldl cholesterol','mtl','ldl']],
+ ['chol',['bendras cholesterolis','bendrasis cholesterolis','cholesterolis','cholesterolio','total cholesterol','cholesterol']],
  ['tg',['trigliceridai','triglycerides']],
- ['vitd',['vitaminas d','vitamino d','vitamin d','25-oh-d']],
+ ['vitd',['25-oh vitaminas d','vitaminas d','vitamino d','vitamin d','25-oh-d']],
  ['b12',['b12']],
  ['ferr',['feritinas','ferritin']],
  ['alt',['alanininaminotransferaze','alat','alt','gpt']],
@@ -441,14 +442,37 @@ function addRows(items){
   return added;
 }
 function fillMsg(t){const p=$('#fillmsg');p.textContent=t;p.hidden=false}
-/* best-effort reader for text copied out of a lab report: one result per line, "name value unit range" */
+/* best-effort reader for text copied out of a lab report. Copying a table gives different text depending on the
+   viewer, so it handles: one result per line, everything run together on one line, one table cell per line,
+   and a column of test names followed by a column of results. */
 const NUM='\\d+(?:[.,]\\d+)?',RANGE=NUM+'\\s*[-–—]\\s*'+NUM;
-function findAlias(n){
-  for(const[id,al]of ALIASES)for(const a of al){
-    const m=n.match(new RegExp('(^|[^a-z0-9])'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^a-z0-9])'));
-    if(m)return{id,end:m.index+m[0].length};
-  }
-  return null;
+const RNG=new RegExp('^[^\\d<>≤≥]{0,40}?(?:('+NUM+')\\s*[-–—]\\s*('+NUM+')|[<≤]\\s*=?\\s*('+NUM+')|[>≥]\\s*=?\\s*('+NUM+'))');
+function allHits(t){ // every place a known test name occurs; where names overlap, the longer one wins
+  const c=[];
+  ALIASES.forEach(([id,al],pri)=>al.forEach(a=>{
+    const re=new RegExp('(?<![a-z0-9])'+a.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![a-z0-9])','g');let m;
+    while((m=re.exec(t)))c.push({id,start:m.index,end:m.index+a.length,pri});
+  }));
+  c.sort((x,y)=>(y.end-y.start)-(x.end-x.start)||x.pri-y.pri);
+  const out=[];
+  for(const h of c)if(!out.some(o=>h.start<o.end&&o.start<h.end))out.push(h);
+  return out.sort((x,y)=>x.start-y.start);
+}
+// drop dates, clock times and bracketed words such as "(nevalgius)", which are never results
+const cleanCell=t=>t.replace(/\b(?:19|20)\d\d[-./]\d\d[-./]\d\d\b/g,' ').replace(/\b\d{1,2}:\d\d(?::\d\d)?\b/g,' ')
+  .replace(/\(([^)]*)\)/g,(m,x)=>/[a-z]/.test(x)&&!new RegExp(RANGE).test(x)?' ':' '+x+' ');
+function readRange(s){
+  const r=s.match(RNG);
+  return r?(r[1]!=null?{lo:num(r[1]),hi:num(r[2])}:r[3]!=null?{lo:null,hi:num(r[3])}:{lo:num(r[4]),hi:null}):null;
+}
+function readResult(body){ // "1,60 nmol/l 0,29 - 1,67" -> value, unit as written, reference range
+  let rg;
+  const lead=body.match(new RegExp('^[^\\d]{0,40}?('+RANGE+')'));
+  if(lead&&new RegExp(NUM).test(body.slice(lead[0].length))){rg=readRange(lead[1]);body=body.slice(lead[0].length)} // range printed before the result
+  const v=body.match(new RegExp('^([^\\d]{0,80}?)('+NUM+')(?:\\s*[hl*!↑↓]{1,2}(?=\\s))?\\s*([a-zµ%][a-zµ%/0-9]*)?'));
+  if(!v)return null;
+  if(!rg)rg=readRange(body.slice(v[0].length));
+  return{value:num(v[2]),unit:v[3],lo:rg?rg.lo:undefined,hi:rg?rg.hi:undefined};
 }
 function normUnit(id,raw){
   if(!raw)return null;
@@ -457,31 +481,52 @@ function normUnit(id,raw){
   return us.find(u=>u.toLowerCase()===raw)||(UNIT_EQ[raw]||[]).find(u=>us.includes(u))||raw.replace(/l$/,'L');
 }
 function parseReport(text){
-  const lines=text.split(/\r?\n/).map(l=>norm(l).trim()).filter(Boolean),items=[],seen={};
-  const clean=t=>t.replace(/\b(?:19|20)\d\d[-./]\d\d[-./]\d\d\b/g,' ')
-    .replace(/\(([^)]*)\)/g,(m,x)=>/[a-z]/.test(x)&&!new RegExp(RANGE).test(x)?' ':' '+x+' ');
-  let date=null;
-  for(const l of lines)if(/paem|paimt|eminio|meginio|tyrimo data|collect|sampl/.test(l)){const m=l.match(/\b(20\d\d)[-./](\d\d)[-./](\d\d)\b/);if(m){date=m[1]+'-'+m[2]+'-'+m[3];break}}
-  for(let i=0;i<lines.length;i++){
-    const hit=findAlias(lines[i]);if(!hit||seen[hit.id])continue;
-    let rest=clean(lines[i].slice(hit.end));
-    if(!new RegExp(NUM).test(rest)&&lines[i+1]&&!findAlias(lines[i+1]))rest=clean(lines[i+1]);
-    let lo,hi;
-    const lead=rest.match(new RegExp('^[^\\d]*('+RANGE+')'));
-    if(lead&&new RegExp(NUM).test(rest.slice(lead[0].length))){ // range printed before the result
-      const r=lead[1].split(/\s*[-–—]\s*/);lo=num(r[0]);hi=num(r[1]);rest=rest.slice(lead[0].length);
-    }
-    const v=rest.match(new RegExp('('+NUM+')\\s*([a-zµ%][a-zµ%/0-9]*)?'));if(!v)continue;
-    const after=rest.slice(v.index+v[0].length);
-    if(lo===undefined){
-      const r=after.match(new RegExp('('+NUM+')\\s*[-–—]\\s*('+NUM+')')),lt=after.match(new RegExp('[<≤]\\s*=?\\s*('+NUM+')')),gt=after.match(new RegExp('[>≥]\\s*=?\\s*('+NUM+')'));
-      if(r){lo=num(r[1]);hi=num(r[2])}else if(lt){lo=null;hi=num(lt[1])}else if(gt){lo=num(gt[1]);hi=null}
-    }
-    const it={test:hit.id,value:num(v[1]),unit:normUnit(hit.id,v[2])};
-    if(lo!==undefined){it.refLow=lo;it.refHigh=hi}
-    seen[hit.id]=1;items.push(it);
+  const L=norm(text).replace(/\r/g,'').split('\n').map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean),t=L.join('\n');
+  const items=[],seen={},pend=[]; // pend: test names found without a result that could be read safely
+  const dm=t.match(/(?:paem|paimt|eminio|meginio|tyrimo data|collect|sampl)[^\n]{0,40}?\b(20\d\d)[-./](\d\d)[-./](\d\d)\b/);
+  const starts=[];let pos=0;L.forEach(l=>{starts.push(pos);pos+=l.length+1});
+  const hits=allHits(t);
+  hits.forEach(h=>{let i=starts.length-1;while(starts[i]>h.start)i--;h.line=i});
+  const lineHit=L.map((l,i)=>hits.find(h=>h.line===i&&h.id)||null);
+  const noDigit=L.map((l,i)=>{ // true when the line has no number once test names are taken out
+    let s=l;hits.filter(h=>h.line===i).forEach(h=>{s=s.replace(t.slice(h.start,h.end),' ')});return!/\d/.test(cleanCell(s))});
+  const isNum=l=>/^[(<>≤≥ ]*\d/.test(l);
+  const isUnit=l=>l.length<=20&&/[\/%]/.test(l)&&/^[a-zµ%][a-zµ%\/0-9^*]*$/.test(l);
+  const isCell=l=>l.length<=30&&(isNum(l)||isUnit(l)||/^[hl*!↑↓]{1,2}$/.test(l)); // a result, a unit, or a high/low flag
+  const used=L.map(()=>false);
+  const add=(id,r)=>{const it={test:id,value:r.value,unit:normUnit(id,r.unit)};if(r.lo!==undefined){it.refLow=r.lo;it.refHigh=r.hi}seen[id]=1;items.push(it)};
+  const later=id=>{if(!pend.includes(id))pend.push(id)};
+
+  // 1. column layout: several test names in a row, then the same number of results (then maybe units, then ranges)
+  for(let i=0;i<L.length;i++){
+    if(!(noDigit[i]&&lineHit[i]))continue;
+    let j=i;while(j<L.length&&noDigit[j]&&!isUnit(L[j]))j++;
+    let names=[];for(let k=i;k<j;k++)names.push(k);
+    if(names.filter(k=>lineHit[k]).length<2){i=j-1;continue}
+    let v=j;while(v<L.length&&isNum(L[v]))v++;
+    const run=v-j,fits=n=>run>0&&(run===n||run%n===0);
+    if(!fits(names.length)){while(names.length&&!lineHit[names[names.length-1]])names.pop()} // trailing column heading
+    const K=names.length;
+    if(!fits(K)){names.forEach(k=>{used[k]=true;if(lineHit[k])later(lineHit[k].id)});i=j-1;continue} // cannot line them up
+    const res=names.map((k,n)=>readResult(cleanCell(L[j+n])));
+    let u=j+K;
+    if(L.slice(u,u+K).length===K&&L.slice(u,u+K).every(isUnit)){res.forEach((r,n)=>{if(r&&!r.unit)r.unit=L[u+n]});u+=K}
+    const rng=L.slice(u,u+K).map(l=>readRange(cleanCell(l)));
+    if(rng.length===K&&rng.every(Boolean)){res.forEach((r,n)=>{if(r&&r.lo===undefined){r.lo=rng[n].lo;r.hi=rng[n].hi}});u+=K}
+    names.forEach((k,n)=>{const h=lineHit[k];if(h&&!seen[h.id]){if(res[n])add(h.id,res[n]);else later(h.id)}});
+    for(let k=i;k<u;k++)used[k]=true;
+    i=u-1;
   }
-  return{date,items};
+  // 2. everything else: the result follows its test name, on the same line or in the next few table cells
+  hits.forEach((h,i)=>{
+    if(!h.id||seen[h.id]||used[h.line])return;
+    const nx=hits[i+1],parts=t.slice(h.end,nx?nx.start:t.length).split('\n');
+    const tail=parts.slice(1,nx&&parts.length>1?-1:undefined),cells=[];
+    for(let k=0;k<tail.length&&cells.length<4;k++){if(used[h.line+1+k]||!isCell(tail[k]))break;cells.push(tail[k])}
+    const r=readResult(cleanCell(parts[0])+' '+cells.map(cleanCell).join(' '));
+    if(r)add(h.id,r);else later(h.id);
+  });
+  return{date:dm?dm[1]+'-'+dm[2]+'-'+dm[3]:null,items,pend:pend.filter(id=>!seen[id])};
 }
 function labForm(entry){
   const single=!!entry,e=entry||{},last=db.labs.length?db.labs.map(x=>x.date).sort().pop():null;
@@ -800,11 +845,13 @@ const ACT={
     fillMsg(n?`Added ${n} test${n>1?'s':''}. Type the results you have; rows left empty are ignored.`:'Those tests are already in the list.')},
   showpaste:()=>{const p=$('#paste');p.hidden=!p.hidden;if(!p.hidden)$('#pastetext').focus()},
   readpaste:()=>{
-    const r=parseReport($('#pastetext').value),n=r.items.length;
-    if(!n){fillMsg('No known tests found in that text. Add them by hand below.');return}
+    const r=parseReport($('#pastetext').value),n=r.items.length,p=r.pend.length;
+    if(!n&&!p){fillMsg('No known tests found in that text. Add them by hand below.');return}
     if(r.date)$('#dlg [name=date]').value=r.date;
-    addRows(r.items);$('#paste').hidden=true;
-    fillMsg(`Read ${n} result${n>1?'s':''}${r.date?' and the date':''}. Check every number, unit and range against the report before saving.`)},
+    addRows(r.items.concat(r.pend.map(test=>({test}))));$('#paste').hidden=true;
+    fillMsg((n?`Read ${n} result${n>1?'s':''}${r.date?' and the date':''}. `:'')+
+      (p?`Found ${p} ${n?'more ':''}test name${p>1?'s':''} without a result I could read safely: ${p>1?'their rows are':'its row is'} added empty for you to fill in. `:'')+
+      'Check every number, unit and range against the report before saving.')},
   pickfolder:async()=>{
     try{let h;
       try{h=await showDirectoryPicker({mode:'readwrite',id:'health-tracker',startIn:'documents'})}
